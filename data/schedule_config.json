@@ -1,0 +1,7 @@
+{
+  "enabled": true,
+  "frequency": "daily",
+  "hour": 6,
+  "day_of_week": 0,
+  "day_of_month": 1
+}

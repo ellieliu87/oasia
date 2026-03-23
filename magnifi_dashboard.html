@@ -1,0 +1,1817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS · Portfolio Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root {
+    --navy:      #0F1F3D;
+    --navy-mid:  #1A3060;
+    --navy-soft: #2A4A80;
+    --blue:      #3B6FD4;
+    --blue-light:#EEF3FF;
+    --emerald:   #059669;
+    --emerald-bg:#ECFDF5;
+    --coral:     #E5484D;
+    --coral-bg:  #FFF1F2;
+    --amber:     #D97706;
+    --amber-bg:  #FFFBEB;
+    --slate:     #64748B;
+    --slate-light:#F1F5F9;
+    --border:    #E2E8F0;
+    --border-dark:#CBD5E1;
+    --bg:        #F8F9FC;
+    --surface:   #FFFFFF;
+    --text:      #0F172A;
+    --text-2:    #334155;
+    --text-3:    #64748B;
+    --text-4:    #94A3B8;
+    --shadow-sm: 0 1px 3px rgba(15,31,61,0.06), 0 1px 2px rgba(15,31,61,0.04);
+    --shadow:    0 4px 16px rgba(15,31,61,0.08), 0 1px 4px rgba(15,31,61,0.04);
+    --shadow-lg: 0 12px 40px rgba(15,31,61,0.12), 0 4px 12px rgba(15,31,61,0.06);
+    --radius:    14px;
+    --radius-sm: 8px;
+    --serif:     'DM Serif Display', Georgia, serif;
+    --sans:      'DM Sans', system-ui, sans-serif;
+    --mono:      'JetBrains Mono', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── LAYOUT ── */
+  .shell {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    grid-template-rows: 60px 1fr;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── TOPBAR ── */
+  .topbar {
+    grid-column: 1 / -1;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 24px;
+    box-shadow: var(--shadow-sm);
+    z-index: 50;
+  }
+
+  .logo {
+    font-family: var(--serif);
+    font-size: 22px;
+    color: var(--navy);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+  }
+
+  .logo-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--blue), var(--emerald));
+  }
+
+  .topbar-search {
+    flex: 1;
+    max-width: 440px;
+    position: relative;
+  }
+
+  .topbar-search input {
+    width: 100%;
+    padding: 8px 14px 8px 36px;
+    background: var(--slate-light);
+    border: 1.5px solid transparent;
+    border-radius: 10px;
+    font-family: var(--sans);
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    transition: all 0.2s;
+  }
+
+  .topbar-search input:focus {
+    background: var(--surface);
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(59,111,212,0.1);
+  }
+
+  .topbar-search svg {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-4);
+  }
+
+  .topbar-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .market-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: var(--slate-light);
+    border-radius: 20px;
+    font-size: 12px;
+    font-family: var(--mono);
+  }
+
+  .pill-label { color: var(--text-3); }
+  .pill-val { color: var(--text); font-weight: 500; }
+  .pill-chg { font-size: 11px; }
+
+  .avatar {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--navy), var(--blue));
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 20px 0;
+    overflow-y: auto;
+  }
+
+  .nav-section { margin-bottom: 24px; }
+
+  .nav-label {
+    padding: 0 18px 6px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--text-4);
+    text-transform: uppercase;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 18px;
+    cursor: pointer;
+    color: var(--text-3);
+    font-size: 13.5px;
+    font-weight: 500;
+    border-left: 2px solid transparent;
+    transition: all 0.15s;
+    border-radius: 0 8px 8px 0;
+    margin-right: 8px;
+  }
+
+  .nav-item:hover { color: var(--text); background: var(--slate-light); }
+
+  .nav-item.active {
+    color: var(--blue);
+    background: var(--blue-light);
+    border-left-color: var(--blue);
+    font-weight: 600;
+  }
+
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+
+  .nav-badge {
+    margin-left: auto;
+    background: var(--blue-light);
+    color: var(--blue);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 10px;
+  }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 16px 18px;
+    border-top: 1px solid var(--border);
+  }
+
+  .user-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .user-info { flex: 1; }
+  .user-name { font-size: 13px; font-weight: 600; color: var(--text); }
+  .user-role { font-size: 11px; color: var(--text-4); }
+
+  /* ── MAIN ── */
+  .main {
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    position: relative;
+  }
+
+  /* ── PAGE HEADER ── */
+  .page-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+
+  .page-title {
+    font-family: var(--serif);
+    font-size: 28px;
+    color: var(--navy);
+    line-height: 1.1;
+  }
+
+  .page-sub {
+    font-size: 13px;
+    color: var(--text-3);
+    margin-top: 4px;
+  }
+
+  .header-actions { display: flex; gap: 8px; }
+
+  .btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+    font-family: var(--sans);
+  }
+
+  .btn-primary {
+    background: var(--navy);
+    color: white;
+  }
+
+  .btn-primary:hover { background: var(--navy-mid); }
+
+  .btn-outline {
+    background: transparent;
+    color: var(--text-2);
+    border: 1.5px solid var(--border-dark);
+  }
+
+  .btn-outline:hover { background: var(--slate-light); }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.2s, border-color 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card:hover { box-shadow: var(--shadow); }
+
+  .card.highlighted {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(59,111,212,0.1), var(--shadow);
+    animation: cardPulse 0.6s ease;
+  }
+
+  @keyframes cardPulse {
+    0% { transform: scale(1); }
+    30% { transform: scale(1.01); }
+    100% { transform: scale(1); }
+  }
+
+  .card-shimmer::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(59,111,212,0.05) 50%, transparent 100%);
+    animation: shimmer 0.8s ease;
+    pointer-events: none;
+  }
+
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  .card-pad { padding: 20px; }
+
+  /* ── KPI ROW ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+
+  .kpi-card {
+    padding: 20px;
+    position: relative;
+  }
+
+  .kpi-label {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 8px;
+  }
+
+  .kpi-value {
+    font-family: var(--serif);
+    font-size: 30px;
+    color: var(--navy);
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .kpi-sub {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-3);
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 7px;
+    border-radius: 20px;
+    font-size: 11.5px;
+    font-weight: 600;
+  }
+
+  .badge-up { background: var(--emerald-bg); color: var(--emerald); }
+  .badge-down { background: var(--coral-bg); color: var(--coral); }
+  .badge-flat { background: var(--amber-bg); color: var(--amber); }
+
+  .kpi-accent {
+    position: absolute;
+    bottom: 0; right: 0;
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    opacity: 0.06;
+    transform: translate(25%, 25%);
+  }
+
+  /* ── MAIN GRID ── */
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 340px;
+    grid-template-rows: auto auto;
+    gap: 20px;
+  }
+
+  /* ── PORTFOLIO VALUE CHART ── */
+  .portfolio-chart-card { grid-column: 1 / 3; }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px 0;
+    margin-bottom: 16px;
+  }
+
+  .card-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .card-title-serif {
+    font-family: var(--serif);
+    font-size: 18px;
+    color: var(--navy);
+  }
+
+  .card-action {
+    font-size: 12px;
+    color: var(--blue);
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  .chart-tabs {
+    display: flex;
+    gap: 4px;
+  }
+
+  .chart-tab {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--text-3);
+    transition: all 0.15s;
+    border: none;
+    background: none;
+    font-family: var(--sans);
+  }
+
+  .chart-tab.active {
+    background: var(--navy);
+    color: white;
+  }
+
+  .chart-tab:hover:not(.active) { background: var(--slate-light); color: var(--text); }
+
+  .chart-wrap { padding: 0 20px 20px; height: 220px; }
+
+  /* ── HEALTH SCORE ── */
+  .health-card { grid-column: 3; grid-row: 1 / 3; }
+
+  .health-ring-wrap {
+    display: flex;
+    justify-content: center;
+    padding: 20px 0 10px;
+    position: relative;
+  }
+
+  .health-ring-wrap canvas { max-width: 160px; }
+
+  .ring-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+
+  .ring-score {
+    font-family: var(--serif);
+    font-size: 36px;
+    color: var(--navy);
+    line-height: 1;
+  }
+
+  .ring-label {
+    font-size: 11px;
+    color: var(--text-3);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .health-metrics { padding: 0 20px 20px; }
+
+  .health-metric {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .health-metric:last-child { border-bottom: none; }
+
+  .hm-left { flex: 1; }
+  .hm-name { font-size: 13px; font-weight: 500; color: var(--text); }
+  .hm-desc { font-size: 11px; color: var(--text-4); margin-top: 1px; }
+
+  .hm-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+
+  .hm-bar-wrap {
+    width: 80px;
+    height: 5px;
+    background: var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .hm-bar {
+    height: 100%;
+    border-radius: 10px;
+    background: linear-gradient(90deg, var(--blue), var(--emerald));
+    transition: width 1s ease;
+  }
+
+  .hm-score {
+    font-size: 11.5px;
+    font-weight: 700;
+    font-family: var(--mono);
+  }
+
+  /* ── HOLDINGS ── */
+  .holdings-card { grid-column: 1; }
+
+  .holdings-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .holdings-table th {
+    padding: 10px 12px;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--text-4);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    text-align: right;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  .holdings-table th:first-child { text-align: left; }
+
+  .holdings-table td {
+    padding: 11px 12px;
+    font-size: 13px;
+    text-align: right;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-2);
+    font-family: var(--mono);
+    font-size: 12.5px;
+  }
+
+  .holdings-table tr:last-child td { border-bottom: none; }
+  .holdings-table tr:hover td { background: var(--slate-light); }
+
+  .holdings-table td:first-child {
+    text-align: left;
+    font-family: var(--sans);
+    font-weight: 600;
+    color: var(--text);
+    font-size: 13px;
+  }
+
+  .pool-sub {
+    font-size: 11px;
+    color: var(--text-4);
+    font-weight: 400;
+    font-family: var(--sans);
+    margin-top: 1px;
+  }
+
+  /* ── SECTOR EXPOSURE ── */
+  .sector-card { grid-column: 2; }
+
+  .sector-list { padding: 0 20px 16px; }
+
+  .sector-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sector-row:last-child { border-bottom: none; }
+
+  .sector-color {
+    width: 10px; height: 10px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  .sector-name { flex: 1; font-size: 13px; font-weight: 500; color: var(--text); }
+
+  .sector-bar-wrap {
+    width: 100px;
+    height: 6px;
+    background: var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .sector-bar {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.8s ease;
+  }
+
+  .sector-pct {
+    font-size: 12.5px;
+    font-weight: 700;
+    font-family: var(--mono);
+    width: 36px;
+    text-align: right;
+    color: var(--text-2);
+  }
+
+  /* ── BOTTOM ROW ── */
+  .bottom-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  /* ── TOP PERFORMERS ── */
+  .performer-list { padding: 0 20px 16px; }
+
+  .performer-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .performer-row:last-child { border-bottom: none; }
+
+  .performer-rank {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-4);
+    font-family: var(--mono);
+    width: 18px;
+  }
+
+  .performer-info { flex: 1; }
+  .performer-name { font-size: 13px; font-weight: 600; color: var(--text); }
+  .performer-type { font-size: 11px; color: var(--text-4); }
+
+  .performer-chart { width: 60px; height: 32px; }
+
+  .performer-return {
+    font-size: 14px;
+    font-weight: 700;
+    font-family: var(--mono);
+    color: var(--emerald);
+    text-align: right;
+    min-width: 60px;
+  }
+
+  .performer-return.neg { color: var(--coral); }
+
+  /* ── WATCHLIST ── */
+  .watch-list { padding: 0 20px 16px; }
+
+  .watch-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+
+  .watch-row:last-child { border-bottom: none; }
+  .watch-row:hover { background: var(--slate-light); margin: 0 -20px; padding: 10px 20px; }
+
+  .watch-star { color: var(--amber); font-size: 14px; }
+  .watch-info { flex: 1; }
+  .watch-name { font-size: 13px; font-weight: 600; color: var(--text); }
+  .watch-meta { font-size: 11px; color: var(--text-4); }
+
+  .watch-price {
+    text-align: right;
+    font-family: var(--mono);
+  }
+
+  .watch-price-val { font-size: 13.5px; font-weight: 600; color: var(--text); }
+  .watch-price-chg { font-size: 11.5px; margin-top: 1px; }
+
+  /* ── AGENT CHAT ── */
+  .agent-fab {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--navy), var(--blue));
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(15,31,61,0.25);
+    font-size: 22px;
+    z-index: 200;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: none;
+  }
+
+  .agent-fab:hover {
+    transform: scale(1.08);
+    box-shadow: 0 12px 32px rgba(15,31,61,0.35);
+  }
+
+  .agent-panel {
+    position: fixed;
+    bottom: 96px;
+    right: 28px;
+    width: 400px;
+    height: 580px;
+    background: var(--surface);
+    border-radius: 20px;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 199;
+    transform: translateY(20px) scale(0.95);
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .agent-panel.open {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .agent-panel-header {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  .agent-avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .agent-name { font-size: 14px; font-weight: 700; color: white; }
+  .agent-status {
+    font-size: 11px;
+    color: rgba(255,255,255,0.6);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .status-dot-live {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #4ade80;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .agent-close {
+    margin-left: auto;
+    background: rgba(255,255,255,0.1);
+    border: none;
+    color: white;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+  }
+
+  .agent-close:hover { background: rgba(255,255,255,0.2); }
+
+  .agent-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: var(--bg);
+  }
+
+  .msg {
+    max-width: 85%;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    animation: msgIn 0.25s ease;
+  }
+
+  @keyframes msgIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .msg.bot { align-self: flex-start; }
+  .msg.user { align-self: flex-end; }
+
+  .msg-bubble {
+    padding: 10px 14px;
+    border-radius: 16px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .msg.bot .msg-bubble {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 4px 16px 16px 16px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .msg.user .msg-bubble {
+    background: var(--navy);
+    color: white;
+    border-radius: 16px 4px 16px 16px;
+  }
+
+  .msg-time { font-size: 10px; color: var(--text-4); padding: 0 4px; }
+
+  .msg-highlight {
+    color: var(--blue);
+    font-weight: 700;
+    font-family: var(--mono);
+  }
+
+  .msg-up { color: var(--emerald); font-weight: 700; }
+  .msg-down { color: var(--coral); font-weight: 700; }
+
+  .typing-indicator {
+    display: flex;
+    gap: 4px;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px 16px 16px 16px;
+    width: fit-content;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .typing-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--text-4);
+    animation: typingBounce 1.2s infinite;
+  }
+
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes typingBounce {
+    0%, 80%, 100% { transform: scale(0.7); opacity: 0.4; }
+    40% { transform: scale(1); opacity: 1; }
+  }
+
+  /* Quick chips */
+  .quick-chips {
+    padding: 10px 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .chip {
+    padding: 5px 11px;
+    background: var(--blue-light);
+    color: var(--blue);
+    border-radius: 20px;
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid rgba(59,111,212,0.2);
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .chip:hover { background: var(--blue); color: white; }
+
+  /* Input */
+  .agent-input-area {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .agent-input {
+    flex: 1;
+    padding: 9px 14px;
+    background: var(--bg);
+    border: 1.5px solid var(--border-dark);
+    border-radius: 12px;
+    font-family: var(--sans);
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    resize: none;
+    height: 40px;
+    transition: border-color 0.2s;
+  }
+
+  .agent-input:focus { border-color: var(--blue); background: var(--surface); }
+
+  .agent-send {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    background: var(--navy);
+    color: white;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: background 0.15s;
+    flex-shrink: 0;
+  }
+
+  .agent-send:hover { background: var(--navy-mid); }
+
+  /* Scrollbars */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-dark); border-radius: 4px; }
+
+  /* Animations */
+  .fade-in {
+    animation: fadeIn 0.4s ease both;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .stagger-1 { animation-delay: 0.05s; }
+  .stagger-2 { animation-delay: 0.1s; }
+  .stagger-3 { animation-delay: 0.15s; }
+  .stagger-4 { animation-delay: 0.2s; }
+
+  /* Mini sparklines */
+  .sparkline { display: block; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <div class="logo">
+      <div class="logo-dot"></div>
+      Oasia
+    </div>
+    <div class="topbar-search">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" placeholder="Search pools, analytics, positions…">
+    </div>
+    <div class="topbar-right">
+      <div class="market-pill">
+        <span class="pill-label">10Y</span>
+        <span class="pill-val">4.312%</span>
+        <span class="pill-chg" style="color:var(--emerald)">▼3.2</span>
+      </div>
+      <div class="market-pill">
+        <span class="pill-label">CC30</span>
+        <span class="pill-val">38bps</span>
+        <span class="pill-chg" style="color:var(--emerald)">▼1</span>
+      </div>
+      <div class="market-pill">
+        <span class="pill-label">SOFR</span>
+        <span class="pill-val">5.31%</span>
+        <span class="pill-chg" style="color:var(--text-4)">—</span>
+      </div>
+      <div class="avatar">JL</div>
+    </div>
+  </header>
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="nav-section">
+      <div class="nav-label">Main</div>
+      <div class="nav-item active"><span class="nav-icon">⊡</span> Dashboard</div>
+      <div class="nav-item"><span class="nav-icon">⊞</span> Security Selection</div>
+      <div class="nav-item"><span class="nav-icon">◈</span> What-If Sandbox</div>
+      <div class="nav-item"><span class="nav-icon">↑↓</span> Attribution <span class="nav-badge">NEW</span></div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Portfolio</div>
+      <div class="nav-item"><span class="nav-icon">▣</span> Holdings</div>
+      <div class="nav-item"><span class="nav-icon">★</span> Watchlist</div>
+      <div class="nav-item"><span class="nav-icon">⚡</span> Alerts <span class="nav-badge">3</span></div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Analytics</div>
+      <div class="nav-item"><span class="nav-icon">◎</span> Risk Profile</div>
+      <div class="nav-item"><span class="nav-icon">≋</span> Scenarios</div>
+      <div class="nav-item"><span class="nav-icon">∿</span> EVE Analysis</div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="avatar" style="width:32px;height:32px;font-size:12px">JL</div>
+        <div class="user-info">
+          <div class="user-name">J. Liu</div>
+          <div class="user-role">Senior MBS Trader</div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main class="main" id="mainContent">
+
+    <!-- PAGE HEADER -->
+    <div class="page-header fade-in">
+      <div>
+        <div class="page-title">Good morning, Jennifer 👋</div>
+        <div class="page-sub">Friday, March 20, 2025 · Portfolio last updated 7:42 AM</div>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-outline">↻ Refresh Analytics</button>
+        <button class="btn btn-primary">+ New Position</button>
+      </div>
+    </div>
+
+    <!-- KPI ROW -->
+    <div class="kpi-grid fade-in stagger-1" id="kpiGrid">
+      <div class="card kpi-card" id="kpi-book">
+        <div class="kpi-label">Total Book Value</div>
+        <div class="kpi-value" id="kv-book">$2.41B</div>
+        <div class="kpi-sub">
+          <span class="badge badge-up">▲ +$84M</span>
+          <span>vs last month</span>
+        </div>
+        <div class="kpi-accent" style="background:var(--blue)"></div>
+      </div>
+      <div class="card kpi-card" id="kpi-yield">
+        <div class="kpi-label">Book Yield</div>
+        <div class="kpi-value" style="color:var(--emerald)" id="kv-yield">5.72%</div>
+        <div class="kpi-sub">
+          <span class="badge badge-down">▼ -4bps</span>
+          <span>vs last month</span>
+        </div>
+        <div class="kpi-accent" style="background:var(--emerald)"></div>
+      </div>
+      <div class="card kpi-card" id="kpi-oas">
+        <div class="kpi-label">Portfolio OAS</div>
+        <div class="kpi-value" id="kv-oas">41 bps</div>
+        <div class="kpi-sub">
+          <span class="badge badge-down">▼ -3bps</span>
+          <span>vs last month</span>
+        </div>
+        <div class="kpi-accent" style="background:var(--amber)"></div>
+      </div>
+      <div class="card kpi-card" id="kpi-oad">
+        <div class="kpi-label">Portfolio OAD</div>
+        <div class="kpi-value" id="kv-oad">4.12 yrs</div>
+        <div class="kpi-sub">
+          <span class="badge badge-flat">▼ -0.18</span>
+          <span>vs last month</span>
+        </div>
+        <div class="kpi-accent" style="background:var(--coral)"></div>
+      </div>
+    </div>
+
+    <!-- MAIN DASHBOARD GRID -->
+    <div class="dashboard-grid fade-in stagger-2">
+
+      <!-- Portfolio Value Chart -->
+      <div class="card portfolio-chart-card" id="card-pvchart">
+        <div class="card-header">
+          <div class="card-title-serif">Portfolio Value</div>
+          <div class="chart-tabs">
+            <button class="chart-tab active" onclick="setChartPeriod(this,'1M')">1M</button>
+            <button class="chart-tab" onclick="setChartPeriod(this,'3M')">3M</button>
+            <button class="chart-tab" onclick="setChartPeriod(this,'6M')">6M</button>
+            <button class="chart-tab" onclick="setChartPeriod(this,'YTD')">YTD</button>
+            <button class="chart-tab" onclick="setChartPeriod(this,'1Y')">1Y</button>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="portfolioChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Health Score -->
+      <div class="card health-card" id="card-health">
+        <div class="card-header">
+          <div class="card-title-serif">Portfolio Health</div>
+          <span class="card-action">Details →</span>
+        </div>
+        <div class="health-ring-wrap">
+          <canvas id="healthRing" width="160" height="160"></canvas>
+          <div class="ring-center">
+            <div class="ring-score" id="healthScore">78</div>
+            <div class="ring-label">Score</div>
+          </div>
+        </div>
+        <div class="health-metrics" id="healthMetrics">
+          <div class="health-metric">
+            <div class="hm-left">
+              <div class="hm-name">Risk Profile</div>
+              <div class="hm-desc">OAD vs benchmark</div>
+            </div>
+            <div class="hm-right">
+              <div class="hm-bar-wrap"><div class="hm-bar" style="width:72%;background:linear-gradient(90deg,var(--blue),var(--emerald))"></div></div>
+              <div class="hm-score" style="color:var(--emerald)">72/100</div>
+            </div>
+          </div>
+          <div class="health-metric">
+            <div class="hm-left">
+              <div class="hm-name">Diversification</div>
+              <div class="hm-desc">Coupon & product spread</div>
+            </div>
+            <div class="hm-right">
+              <div class="hm-bar-wrap"><div class="hm-bar" style="width:65%;background:linear-gradient(90deg,var(--blue),#8b5cf6)"></div></div>
+              <div class="hm-score" style="color:var(--blue)">65/100</div>
+            </div>
+          </div>
+          <div class="health-metric">
+            <div class="hm-left">
+              <div class="hm-name">Risk-Adj Return</div>
+              <div class="hm-desc">OAS per unit OAD</div>
+            </div>
+            <div class="hm-right">
+              <div class="hm-bar-wrap"><div class="hm-bar" style="width:84%"></div></div>
+              <div class="hm-score" style="color:var(--emerald)">84/100</div>
+            </div>
+          </div>
+          <div class="health-metric">
+            <div class="hm-left">
+              <div class="hm-name">Convexity Quality</div>
+              <div class="hm-desc">Negative convexity exposure</div>
+            </div>
+            <div class="hm-right">
+              <div class="hm-bar-wrap"><div class="hm-bar" style="width:58%;background:linear-gradient(90deg,var(--amber),var(--coral))"></div></div>
+              <div class="hm-score" style="color:var(--amber)">58/100</div>
+            </div>
+          </div>
+          <div class="health-metric">
+            <div class="hm-left">
+              <div class="hm-name">EVE Sensitivity</div>
+              <div class="hm-desc">ΔEVE at +200bps</div>
+            </div>
+            <div class="hm-right">
+              <div class="hm-bar-wrap"><div class="hm-bar" style="width:80%"></div></div>
+              <div class="hm-score" style="color:var(--emerald)">80/100</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Holdings -->
+      <div class="card holdings-card" id="card-holdings">
+        <div class="card-header">
+          <div class="card-title-serif">Holdings</div>
+          <span class="card-action">View All →</span>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="holdings-table" id="holdingsTable">
+            <thead>
+              <tr>
+                <th>Pool</th>
+                <th>Face $M</th>
+                <th>Price</th>
+                <th>Bk Yld</th>
+                <th>OAS</th>
+                <th>OAD</th>
+                <th>P&L</th>
+              </tr>
+            </thead>
+            <tbody id="holdingsBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Sector Exposure -->
+      <div class="card sector-card" id="card-sector">
+        <div class="card-header">
+          <div class="card-title-serif">Sector Exposure</div>
+          <div style="width:120px;height:90px">
+            <canvas id="sectorDoughnut"></canvas>
+          </div>
+        </div>
+        <div class="sector-list" id="sectorList"></div>
+      </div>
+
+    </div>
+
+    <!-- BOTTOM ROW -->
+    <div class="bottom-grid fade-in stagger-3">
+
+      <!-- Top Performers YTD -->
+      <div class="card" id="card-performers">
+        <div class="card-header">
+          <div class="card-title-serif">Top Performers YTD</div>
+          <span class="card-action">View All →</span>
+        </div>
+        <div class="performer-list" id="performerList"></div>
+      </div>
+
+      <!-- Watchlist -->
+      <div class="card" id="card-watchlist">
+        <div class="card-header">
+          <div class="card-title-serif">Watchlist</div>
+          <span class="card-action">+ Add Pool</span>
+        </div>
+        <div class="watch-list" id="watchList"></div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<!-- AGENT FAB -->
+<button class="agent-fab" id="agentFab" onclick="toggleAgent()">✦</button>
+
+<!-- AGENT PANEL -->
+<div class="agent-panel" id="agentPanel">
+  <div class="agent-panel-header">
+    <div class="agent-avatar">✦</div>
+    <div>
+      <div class="agent-name">Oasia Agent</div>
+      <div class="agent-status"><div class="status-dot-live"></div> Live · Context-aware</div>
+    </div>
+    <button class="agent-close" onclick="toggleAgent()">✕</button>
+  </div>
+
+  <div class="agent-messages" id="agentMsgs">
+    <div class="msg bot">
+      <div class="msg-bubble">
+        Good morning Jennifer. Your portfolio is at <span class="msg-highlight">$2.41B</span> with an OAS of <span class="msg-highlight">41 bps</span> and book yield of <span class="msg-highlight">5.72%</span>.<br><br>
+        OAS tightened <span class="msg-down">▼ 3 bps</span> vs last month — primarily sector spread compression. I've found <span class="msg-highlight">14 pools</span> screening cheap today. Ask me anything.
+      </div>
+      <div class="msg-time">7:42 AM</div>
+    </div>
+  </div>
+
+  <div class="quick-chips" id="quickChips">
+    <div class="chip" onclick="sendChip(this)">Morning briefing</div>
+    <div class="chip" onclick="sendChip(this)">Show cheap pools</div>
+    <div class="chip" onclick="sendChip(this)">EVE at +200bps</div>
+    <div class="chip" onclick="sendChip(this)">Why did OAS tighten?</div>
+    <div class="chip" onclick="sendChip(this)">Top performers</div>
+    <div class="chip" onclick="sendChip(this)">Portfolio risk</div>
+  </div>
+
+  <div class="agent-input-area">
+    <input class="agent-input" id="agentInput" placeholder="Ask about your portfolio…" onkeydown="handleEnter(event)">
+    <button class="agent-send" onclick="sendMsg()">➤</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════
+// DATA
+// ══════════════════════════════════
+
+const holdingsData = [
+  { pool:'FN 6.5 #892341', type:'CC30', face:41.7, price:'101-08', yield:5.88, oas:52, oad:3.82, pnl:'+$142K', pnlPos:true },
+  { pool:'FN 6.5 #774210', type:'CC30', face:28.3, price:'101-06', yield:5.84, oas:49, oad:3.91, pnl:'+$98K',  pnlPos:true },
+  { pool:'GN 6.0 #445821', type:'GN30', face:52.4, price:'99-28',  yield:6.01, oas:44, oad:4.12, pnl:'-$52K',  pnlPos:false },
+  { pool:'FN 7.0 #210098', type:'CC30', face:18.9, price:'103-12', yield:5.79, oas:43, oad:3.44, pnl:'-$30K',  pnlPos:false },
+  { pool:'FN 5.5 #742831', type:'CC30', face:78.1, price:'98-16',  yield:6.24, oas:34, oad:4.68, pnl:'+$187K', pnlPos:true },
+  { pool:'FN 6.0 #523910', type:'CC30', face:44.8, price:'99-24',  yield:6.07, oas:39, oad:4.28, pnl:'-$18K',  pnlPos:false },
+];
+
+const sectorData = [
+  { name:'FNMA 30yr', pct:62, color:'#3B6FD4' },
+  { name:'GNMA 30yr', pct:18, color:'#059669' },
+  { name:'FNMA 15yr', pct:12, color:'#D97706' },
+  { name:'FHLMC 30yr',pct:8,  color:'#E5484D' },
+];
+
+const performerData = [
+  { name:'FN 5.5 #742831', type:'CC30', ytd:'+8.42%', pos:true,  sparkData:[98,98.2,98.8,99.1,99.6,100.1,100.4] },
+  { name:'GN 6.0 #112938', type:'GN30', ytd:'+6.18%', pos:true,  sparkData:[99,99.1,99.4,99.8,100.2,100.5,100.8] },
+  { name:'FN 6.5 #892341', type:'CC30', ytd:'+5.91%', pos:true,  sparkData:[100,100.2,100.6,101,101.1,101.3,101.5] },
+  { name:'FN 6.0 #523910', type:'CC30', ytd:'+3.24%', pos:true,  sparkData:[99.5,99.6,99.7,99.8,99.9,100,100.1] },
+  { name:'FN 7.0 #210098', type:'CC30', ytd:'-1.82%', pos:false, sparkData:[104,103.8,103.5,103.2,103,102.8,102.6] },
+];
+
+const watchData = [
+  { name:'FN 6.5 #892341', meta:'CC30 · OAS 52bps · Cheap', price:'101-08', chg:'+0.12', pos:true  },
+  { name:'GN 6.0 #445821', meta:'GN30 · OAS 44bps · Fair',  price:'99-28',  chg:'-0.04', pos:false },
+  { name:'FN 7.0 #210098', meta:'CC30 · OAS 43bps · Fair',  price:'103-12', chg:'+0.06', pos:true  },
+  { name:'FN 5.5 #112938', meta:'CC30 · OAS 61bps · Cheap', price:'98-12',  chg:'+0.18', pos:true  },
+];
+
+// ══════════════════════════════════
+// RENDER TABLES
+// ══════════════════════════════════
+
+function renderHoldings(data) {
+  const tbody = document.getElementById('holdingsBody');
+  tbody.innerHTML = data.map(r => `
+    <tr>
+      <td>
+        <div>${r.pool}</div>
+        <div class="pool-sub">${r.type}</div>
+      </td>
+      <td>${r.face.toFixed(1)}</td>
+      <td>${r.price}</td>
+      <td>${r.yield.toFixed(2)}%</td>
+      <td style="color:${r.oas>45?'var(--emerald)':r.oas<32?'var(--coral)':'var(--text-2)'}">${r.oas}</td>
+      <td>${r.oad.toFixed(2)}</td>
+      <td style="color:${r.pnlPos?'var(--emerald)':'var(--coral)'};font-weight:600">${r.pnl}</td>
+    </tr>`).join('');
+}
+
+function renderSectors(data) {
+  const list = document.getElementById('sectorList');
+  list.innerHTML = data.map(s => `
+    <div class="sector-row">
+      <div class="sector-color" style="background:${s.color}"></div>
+      <div class="sector-name">${s.name}</div>
+      <div class="sector-bar-wrap">
+        <div class="sector-bar" style="width:${s.pct}%;background:${s.color}"></div>
+      </div>
+      <div class="sector-pct">${s.pct}%</div>
+    </div>`).join('');
+}
+
+function renderPerformers(data) {
+  const list = document.getElementById('performerList');
+  list.innerHTML = data.map((p,i) => `
+    <div class="performer-row">
+      <div class="performer-rank">#${i+1}</div>
+      <div class="performer-info">
+        <div class="performer-name">${p.name}</div>
+        <div class="performer-type">${p.type}</div>
+      </div>
+      <canvas class="performer-chart" id="spark-${i}"></canvas>
+      <div class="performer-return ${p.pos?'':'neg'}">${p.ytd}</div>
+    </div>`).join('');
+
+  // Draw sparklines
+  data.forEach((p,i) => {
+    const cvs = document.getElementById(`spark-${i}`);
+    if (!cvs) return;
+    const ctx = cvs.getContext('2d');
+    const color = p.pos ? '#059669' : '#E5484D';
+    new Chart(ctx, {
+      type:'line',
+      data:{ labels: p.sparkData.map((_,j)=>j), datasets:[{
+        data: p.sparkData,
+        borderColor: color,
+        borderWidth: 1.5,
+        pointRadius: 0,
+        tension: 0.4,
+        fill: true,
+        backgroundColor: color + '15',
+      }]},
+      options:{
+        responsive:false, animation:false,
+        plugins:{legend:{display:false},tooltip:{enabled:false}},
+        scales:{x:{display:false},y:{display:false}},
+      }
+    });
+  });
+}
+
+function renderWatchlist(data) {
+  const list = document.getElementById('watchList');
+  list.innerHTML = data.map(w => `
+    <div class="watch-row">
+      <div class="watch-star">★</div>
+      <div class="watch-info">
+        <div class="watch-name">${w.name}</div>
+        <div class="watch-meta">${w.meta}</div>
+      </div>
+      <div class="watch-price">
+        <div class="watch-price-val">${w.price}</div>
+        <div class="watch-price-chg" style="color:${w.pos?'var(--emerald)':'var(--coral)'}">${w.chg}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════
+// PORTFOLIO VALUE CHART
+// ══════════════════════════════════
+
+let portfolioChart;
+
+function buildPortfolioData(period) {
+  const points = { '1M':30, '3M':90, '6M':180, 'YTD':79, '1Y':252 }[period] || 30;
+  const labels = [], vals = [];
+  let v = 2250;
+  for (let i = 0; i < points; i++) {
+    v += (Math.random()-0.44)*12;
+    vals.push(parseFloat(v.toFixed(1)));
+    labels.push(i);
+  }
+  vals[vals.length-1] = 2410;
+  return { labels, vals };
+}
+
+function initPortfolioChart() {
+  const ctx = document.getElementById('portfolioChart').getContext('2d');
+  const { labels, vals } = buildPortfolioData('1M');
+
+  const grad = ctx.createLinearGradient(0,0,0,220);
+  grad.addColorStop(0, 'rgba(59,111,212,0.18)');
+  grad.addColorStop(1, 'rgba(59,111,212,0)');
+
+  portfolioChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: vals,
+        borderColor: '#3B6FD4',
+        borderWidth: 2.5,
+        pointRadius: 0,
+        pointHoverRadius: 5,
+        pointHoverBackgroundColor: '#3B6FD4',
+        tension: 0.4,
+        fill: true,
+        backgroundColor: grad,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode:'index', intersect:false },
+      plugins: {
+        legend: { display:false },
+        tooltip: {
+          backgroundColor: '#0F1F3D',
+          titleColor: 'rgba(255,255,255,0.6)',
+          bodyColor: '#fff',
+          padding: 10,
+          callbacks: {
+            label: ctx => `  $${ctx.parsed.y.toFixed(0)}M`
+          }
+        }
+      },
+      scales: {
+        x: { display:false },
+        y: {
+          display: true,
+          grid: { color:'rgba(226,232,240,0.6)', drawBorder:false },
+          ticks: {
+            color:'#94A3B8', font:{size:11,family:'JetBrains Mono'},
+            callback: v => `$${v.toFixed(0)}M`
+          },
+          border: { display:false }
+        }
+      }
+    }
+  });
+}
+
+function setChartPeriod(el, period) {
+  document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  const { labels, vals } = buildPortfolioData(period);
+  portfolioChart.data.labels = labels;
+  portfolioChart.data.datasets[0].data = vals;
+  portfolioChart.update('active');
+  highlightCard('card-pvchart');
+}
+
+// ══════════════════════════════════
+// HEALTH RING
+// ══════════════════════════════════
+
+let healthChart;
+
+function initHealthRing(score = 78) {
+  const ctx = document.getElementById('healthRing').getContext('2d');
+  if (healthChart) healthChart.destroy();
+  healthChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      datasets: [{
+        data: [score, 100-score],
+        backgroundColor: [
+          score >= 75 ? '#059669' : score >= 55 ? '#D97706' : '#E5484D',
+          '#F1F5F9'
+        ],
+        borderWidth: 0,
+        circumference: 270,
+        rotation: -135,
+      }]
+    },
+    options: {
+      responsive: false,
+      cutout: '78%',
+      plugins: { legend:{display:false}, tooltip:{enabled:false} },
+      animation: { animateRotate:true, duration:1000 }
+    }
+  });
+  document.getElementById('healthScore').textContent = score;
+}
+
+// ══════════════════════════════════
+// SECTOR DOUGHNUT
+// ══════════════════════════════════
+
+function initSectorDoughnut() {
+  const ctx = document.getElementById('sectorDoughnut').getContext('2d');
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: sectorData.map(s=>s.name),
+      datasets: [{
+        data: sectorData.map(s=>s.pct),
+        backgroundColor: sectorData.map(s=>s.color),
+        borderWidth: 2,
+        borderColor: '#fff',
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '65%',
+      plugins: {
+        legend: { display:false },
+        tooltip: {
+          callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed}%` }
+        }
+      }
+    }
+  });
+}
+
+// ══════════════════════════════════
+// CARD HIGHLIGHT
+// ══════════════════════════════════
+
+function highlightCard(id) {
+  const card = document.getElementById(id);
+  if (!card) return;
+  card.classList.remove('highlighted', 'card-shimmer');
+  void card.offsetWidth; // reflow
+  card.classList.add('highlighted', 'card-shimmer');
+  setTimeout(() => card.classList.remove('highlighted', 'card-shimmer'), 2000);
+}
+
+function highlightCards(ids) {
+  ids.forEach((id, i) => setTimeout(() => highlightCard(id), i * 150));
+}
+
+// ══════════════════════════════════
+// UPDATE DASHBOARD STATE
+// ══════════════════════════════════
+
+function updateKPI(id, value, badgeText, badgeClass) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const valEl = el.querySelector('[id^="kv-"]');
+  if (valEl) {
+    valEl.style.transition = 'all 0.4s ease';
+    valEl.textContent = value;
+  }
+  highlightCard(id);
+}
+
+const dashboardStates = {
+  default: {
+    book: '$2.41B', yield: '5.72%', oas: '41 bps', oad: '4.12 yrs',
+    health: 78,
+    sectors: [
+      { name:'FNMA 30yr', pct:62, color:'#3B6FD4' },
+      { name:'GNMA 30yr', pct:18, color:'#059669' },
+      { name:'FNMA 15yr', pct:12, color:'#D97706' },
+      { name:'FHLMC 30yr',pct:8,  color:'#E5484D' },
+    ],
+    holdings: holdingsData,
+  },
+  stressed: {
+    book: '$2.41B', yield: '5.72%', oas: '41 bps', oad: '5.84 yrs',
+    health: 54,
+    sectors: [
+      { name:'FNMA 30yr', pct:62, color:'#3B6FD4' },
+      { name:'GNMA 30yr', pct:18, color:'#059669' },
+      { name:'FNMA 15yr', pct:12, color:'#D97706' },
+      { name:'FHLMC 30yr',pct:8,  color:'#E5484D' },
+    ],
+    holdings: holdingsData.map(h => ({...h, oad: parseFloat((h.oad*1.42).toFixed(2))})),
+  },
+  cheapPools: {
+    book: '$2.41B', yield: '5.72%', oas: '52 bps', oad: '3.94 yrs',
+    health: 81,
+    sectors: [
+      { name:'FNMA 30yr', pct:72, color:'#3B6FD4' },
+      { name:'GNMA 30yr', pct:14, color:'#059669' },
+      { name:'FNMA 15yr', pct:8,  color:'#D97706' },
+      { name:'FHLMC 30yr',pct:6,  color:'#E5484D' },
+    ],
+    holdings: [...holdingsData],
+  },
+};
+
+function applyState(state) {
+  document.getElementById('kv-book').textContent = state.book;
+  document.getElementById('kv-yield').textContent = state.yield;
+  document.getElementById('kv-oas').textContent = state.oas;
+  document.getElementById('kv-oad').textContent = state.oad;
+  initHealthRing(state.health);
+  renderSectors(state.sectors);
+  renderHoldings(state.holdings);
+  highlightCards(['kpi-book','kpi-yield','kpi-oas','kpi-oad','card-health','card-sector','card-holdings']);
+}
+
+// ══════════════════════════════════
+// AGENT CHAT
+// ══════════════════════════════════
+
+let agentOpen = false;
+
+function toggleAgent() {
+  agentOpen = !agentOpen;
+  const panel = document.getElementById('agentPanel');
+  const fab = document.getElementById('agentFab');
+  panel.classList.toggle('open', agentOpen);
+  fab.textContent = agentOpen ? '✕' : '✦';
+}
+
+function handleEnter(e) {
+  if (e.key === 'Enter') sendMsg();
+}
+
+function sendChip(el) {
+  document.getElementById('agentInput').value = el.textContent;
+  sendMsg();
+}
+
+const agentResponses = {
+  'morning briefing': {
+    text: `Here's your morning snapshot:<br><br>
+• Book Value: <span class="msg-highlight">$2.41B</span> (<span class="msg-up">▲ +$84M</span> MoM)<br>
+• Book Yield: <span class="msg-highlight">5.72%</span> (<span class="msg-down">▼ -4bps</span> MoM)<br>
+• Portfolio OAS: <span class="msg-highlight">41 bps</span> (<span class="msg-down">▼ -3bps</span> MoM)<br>
+• Portfolio OAD: <span class="msg-highlight">4.12 yrs</span> (<span class="msg-down">▼ -0.18</span> MoM)<br>
+• 10Y TSY: <span class="msg-highlight">4.312%</span> (<span class="msg-up">▼ -3.2bps</span> today)<br><br>
+Health Score: <span class="msg-highlight">78/100</span>. I found <span class="msg-highlight">14 pools</span> screening cheap vs cohort median today.`,
+    cards: ['kpi-book','kpi-yield','kpi-oas','kpi-oad','card-health'],
+    state: 'default',
+  },
+  'show cheap pools': {
+    text: `Top cheap pools vs CC30 cohort median OAS of <span class="msg-highlight">38 bps</span>:<br><br>
+1. <span class="msg-highlight">FN 6.5 #892341</span> — OAS <span class="msg-up">52 bps</span> (+14 vs median)<br>
+2. <span class="msg-highlight">FN 6.5 #774210</span> — OAS <span class="msg-up">49 bps</span> (+11)<br>
+3. <span class="msg-highlight">FN 6.5 #661834</span> — OAS <span class="msg-up">47 bps</span> (+9)<br>
+4. <span class="msg-highlight">GN 6.0 #445821</span> — OAS <span class="msg-up">44 bps</span> (+6)<br><br>
+Dashboard updated to show cheap pool allocation. Portfolio OAS lifts to <span class="msg-highlight">52 bps</span> if you add top 3.`,
+    cards: ['card-holdings','card-sector','kpi-oas'],
+    state: 'cheapPools',
+  },
+  'eve at +200bps': {
+    text: `At a <span class="msg-highlight">+200 bps</span> parallel rate shock:<br><br>
+• ΔEVE: <span class="msg-down">-$12.6M</span> (-0.52% of book)<br>
+• OAD extends to: <span class="msg-highlight">5.84 yrs</span> (slower prepays)<br>
+• Largest EVE contributors: FN 5.5 #742831 and GN 6.0 #445821<br><br>
+Health score drops to <span class="msg-highlight">54/100</span> under this scenario — EVE sensitivity is the primary drag. Updating dashboard to +200 view.`,
+    cards: ['card-health','kpi-oad','card-holdings'],
+    state: 'stressed',
+  },
+  'why did oas tighten': {
+    text: `OAS tightened <span class="msg-down">12 bps</span> month-over-month. Attribution:<br><br>
+• <span class="msg-down">-8 bps</span> — CC30 sector-wide spread compression<br>
+• <span class="msg-down">-3.8 bps</span> — Paydown of high-OAS 6.5 pools<br>
+• <span class="msg-down">-2.1 bps</span> — New purchases at tighter spreads<br>
+• <span class="msg-up">+1.4 bps</span> — Spread carry accrual<br>
+• <span class="msg-up">+0.5 bps</span> — Seasoning effect<br><br>
+Net: <span class="msg-down">-12.0 bps</span>. Market effect accounted for 67% of the move.`,
+    cards: ['kpi-oas','card-pvchart'],
+    state: 'default',
+  },
+  'top performers': {
+    text: `YTD top performers in your book:<br><br>
+1. <span class="msg-highlight">FN 5.5 #742831</span> — <span class="msg-up">+8.42%</span> (discount appreciation + carry)<br>
+2. <span class="msg-highlight">GN 6.0 #112938</span> — <span class="msg-up">+6.18%</span><br>
+3. <span class="msg-highlight">FN 6.5 #892341</span> — <span class="msg-up">+5.91%</span><br><br>
+The 5.5 coupon stack has benefited most from the February rate rally — slower prepays extended duration and drove price appreciation.`,
+    cards: ['card-performers'],
+    state: 'default',
+  },
+  'portfolio risk': {
+    text: `Portfolio risk summary:<br><br>
+• Health Score: <span class="msg-highlight">78/100</span><br>
+• Risk Profile: <span class="msg-up">72/100</span> — OAD within 0.3yr of benchmark<br>
+• Diversification: <span class="msg-highlight">65/100</span> — Heavy CC30 concentration (62%)<br>
+• Risk-Adj Return: <span class="msg-up">84/100</span> — OAS/OAD ratio strong at 10.0<br>
+• Convexity: <span class="msg-down">58/100</span> — Negative convexity is main concern<br>
+• EVE Sensitivity: <span class="msg-up">80/100</span> — ΔEVE at +200 within limits<br><br>
+Suggest reducing CC30 concentration toward 55% for better diversification score.`,
+    cards: ['card-health','kpi-oas','kpi-oad'],
+    state: 'default',
+  },
+};
+
+function findResponse(query) {
+  const q = query.toLowerCase();
+  for (const [key, val] of Object.entries(agentResponses)) {
+    const words = key.split(' ');
+    if (words.some(w => q.includes(w)) || q.includes(key)) return val;
+  }
+  return {
+    text: `I've analyzed your query. Running analytics against your portfolio and current market data. Portfolio OAS is <span class="msg-highlight">41 bps</span>, book yield <span class="msg-highlight">5.72%</span>, OAD <span class="msg-highlight">4.12 yrs</span>. Check the relevant dashboard cards for updated metrics.`,
+    cards: ['kpi-oas', 'kpi-yield'],
+    state: 'default',
+  };
+}
+
+function sendMsg() {
+  const input = document.getElementById('agentInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+
+  appendMsg('user', text);
+  const typingEl = showTyping();
+
+  setTimeout(() => {
+    typingEl.remove();
+    const response = findResponse(text);
+    appendMsg('bot', response.text);
+
+    // Update dashboard
+    if (response.state) applyState(dashboardStates[response.state]);
+    else if (response.cards) highlightCards(response.cards);
+
+    // Scroll messages
+    const msgs = document.getElementById('agentMsgs');
+    msgs.scrollTop = msgs.scrollHeight;
+  }, 1100 + Math.random() * 400);
+
+  const msgs = document.getElementById('agentMsgs');
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function appendMsg(role, html) {
+  const msgs = document.getElementById('agentMsgs');
+  const now = new Date().toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  div.innerHTML = `<div class="msg-bubble">${html}</div><div class="msg-time">${now}</div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function showTyping() {
+  const msgs = document.getElementById('agentMsgs');
+  const div = document.createElement('div');
+  div.className = 'msg bot';
+  div.innerHTML = `<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+// ══════════════════════════════════
+// INIT
+// ══════════════════════════════════
+
+window.addEventListener('DOMContentLoaded', () => {
+  renderHoldings(holdingsData);
+  renderSectors(sectorData);
+  renderPerformers(performerData);
+  renderWatchlist(watchData);
+  initPortfolioChart();
+  initHealthRing(78);
+  initSectorDoughnut();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Environment / secrets
+.env
+
+# DuckDB databases (binary, runtime-generated)
+*.duckdb
+*.duckdb.wal
+
+# Cached market data and model artifacts
+data/cache/
+data/market_data/
+data/models/
+data/rate_paths/
+data/watchlists/
+
+# Workflow state snapshots (runtime)
+workflow_states/
+
+# Claude memory
+.claude/
