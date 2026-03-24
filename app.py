@@ -187,12 +187,21 @@ def main() -> None:
     )
 
     logger.info("Launching Oasia on port %d...", Config.GRADIO_PORT)
-    uvicorn.run(
-        fastapi_app,
-        host="0.0.0.0",
-        port=Config.GRADIO_PORT,
-        log_level="warning",
-    )
+
+    async def _serve() -> None:
+        config = uvicorn.Config(
+            fastapi_app,
+            host="0.0.0.0",
+            port=Config.GRADIO_PORT,
+            log_level="warning",
+        )
+        server = uvicorn.Server(config)
+        await server.serve()
+
+    try:
+        asyncio.run(_serve())
+    except KeyboardInterrupt:
+        logger.info("Oasia stopped.")
 
 
 if __name__ == "__main__":

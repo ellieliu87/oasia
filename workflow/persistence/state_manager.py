@@ -2,7 +2,7 @@
 Async JSON persistence for WorkflowState.
 
 Each session gets its own file: <state_dir>/<session_id>.json
-A latest-session symlink / copy is maintained for convenience.
+Sessions are scoped per username so concurrent users never share files.
 """
 
 from __future__ import annotations
@@ -34,23 +34,14 @@ class StateManager:
     def _path(self, session_id: str) -> Path:
         return self.state_dir / f"{session_id}.json"
 
-    def _latest_path(self) -> Path:
-        return self.state_dir / "_latest.json"
-
     # ── Save ─────────────────────────────────────────────────────────────────
 
     async def save(self, state: WorkflowState) -> None:
         state.updated_at = datetime.utcnow().isoformat()
         data = state.model_dump_json(indent=2)
-
         session_path = self._path(state.session_id)
         async with aiofiles.open(session_path, "w", encoding="utf-8") as f:
             await f.write(data)
-
-        # Also write a "latest" pointer for easy resume
-        async with aiofiles.open(self._latest_path(), "w", encoding="utf-8") as f:
-            await f.write(data)
-
         logger.debug("State saved → %s (phase=%s)", session_path.name, state.phase)
 
     # ── Load ─────────────────────────────────────────────────────────────────
@@ -64,10 +55,13 @@ class StateManager:
         return WorkflowState.model_validate_json(raw)
 
     async def load_latest(self) -> Optional[WorkflowState]:
-        path = self._latest_path()
-        if not path.exists():
+        """Load the most recently modified session for this user."""
+        candidates = [p for p in self.state_dir.glob("*.json")
+                      if not p.name.startswith("_")]
+        if not candidates:
             return None
-        async with aiofiles.open(path, "r", encoding="utf-8") as f:
+        latest = max(candidates, key=lambda p: p.stat().st_mtime)
+        async with aiofiles.open(latest, "r", encoding="utf-8") as f:
             raw = await f.read()
         return WorkflowState.model_validate_json(raw)
 
@@ -91,8 +85,6 @@ class StateManager:
     def list_sessions(self) -> list[dict]:
         results = []
         for p in sorted(self.state_dir.glob("*.json")):
-            if p.name.startswith("_"):
-                continue
             try:
                 with open(p) as f:
                     raw = json.load(f)

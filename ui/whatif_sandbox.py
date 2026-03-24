@@ -266,6 +266,16 @@ def create_whatif_sandbox_tab(shared_state: gr.State):
         mp, mc, mwac, mprod, mwala, mwam, mls, mltv, mfico, mpca, mppurch, mcpr,
     ):
         """Compute base and modified analytics."""
+        # Warn when no portfolio run exists in DB — what-if uses simplified models
+        try:
+            from db.projections import get_latest_portfolio_kpis
+            if get_latest_portfolio_kpis() is None:
+                gr.Warning(
+                    "Simplified approximation in use — no portfolio run found in DB. "
+                    "Run Portfolio Analytics first for full accuracy."
+                )
+        except Exception:
+            pass
         try:
             base_chars = _build_pool_chars(
                 pool_id, bc, bwac, bwala, bwam, bls, bltv, bfico, bpca, bppurch, bprod

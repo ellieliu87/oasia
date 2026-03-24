@@ -10,6 +10,7 @@ Built on **Gradio 6 + FastAPI**, with a multi-agent backend powered by the **Ope
 
 - [Key Features](#key-features)
 - [Agentic Architecture](#agentic-architecture)
+- [NEXUS Agent Reference](#nexus-agent-reference)
 - [UI Modules](#ui-modules)
 - [Code Structure](#code-structure)
 - [Setup](#setup)
@@ -24,7 +25,7 @@ Built on **Gradio 6 + FastAPI**, with a multi-agent backend powered by the **Ope
 ## Key Features
 
 ### Multi-Agent Chat Panel (NEXUS Agent)
-A floating AI assistant powered by an orchestrator + five specialist sub-agents. The orchestrator routes natural-language queries to the appropriate sub-agent (security selection, portfolio analytics, what-if analysis, attribution, or market data), synthesises responses, and streams them back to the UI — all without leaving the dashboard.
+A floating AI assistant powered by an orchestrator + six specialist sub-agents (7 agents total). The orchestrator routes natural-language queries to the appropriate specialist (security selection, portfolio analytics, what-if analysis, attribution, market data, or dashboard), synthesises responses, and streams them back to the UI — all without leaving the dashboard.
 
 ### Portfolio Planning Workflow — Human-in-the-Loop
 A sequential four-agent pipeline (NewVolume → Risk → Allocation → MBS Decomposition) with five trader approval gates. Each gate presents structured results and pauses for explicit trader approval, modification, or rejection before the next phase proceeds. State is persisted to JSON after every phase; interrupted sessions can be resumed.
@@ -59,16 +60,16 @@ All agent runs, tool calls, and model interactions are traced via Weights & Bias
 ```
 User message
      │
-┌────▼────────────────────────┐
-│      OrchestratorAgent      │  (orchestrator.md skill, gpt-4o)
-│                             │
-│  delegate_to_* tools        │
-└──┬──────┬──────┬──────┬─────┘
-   │      │      │      │
-┌──▼──┐ ┌─▼──┐ ┌▼───┐ ┌▼──────────┐ ┌──────────────┐
-│Sec. │ │Por.│ │W-If│ │Attribution│ │ Market Data  │
-│Sel. │ │Ana.│ │    │ │           │ │              │
-└─────┘ └────┘ └────┘ └───────────┘ └──────────────┘
+┌────▼────────────────────────────┐
+│       OrchestratorAgent         │  (orchestrator.md skill, gpt-4o)
+│                                 │
+│  delegate_to_* tools            │
+└──┬───────┬───────┬───────┬──────┘
+   │       │       │       │       │              │
+┌──▼──┐ ┌──▼──┐ ┌──▼──┐ ┌─▼───────┐ ┌──────────┐ ┌──────────┐
+│Sec. │ │Port.│ │What-│ │Attribu- │ │ Market   │ │Dashboard │
+│Sel. │ │Ana. │ │If   │ │tion     │ │ Data     │ │          │
+└─────┘ └─────┘ └─────┘ └─────────┘ └──────────┘ └──────────┘
 ```
 
 1. The orchestrator LLM receives the user message and decides which specialist(s) to invoke.
@@ -129,6 +130,52 @@ User message
 
 ---
 
+## NEXUS Agent Reference
+
+### The 7 Agents
+
+| # | Agent | Role | Analytics Tools |
+|---|---|---|---|
+| 1 | **Orchestrator** | Classifies user intent and routes to the correct specialist(s). Handles multi-intent queries by calling several delegates in parallel. Never answers analytical questions itself. | *(none — only `delegate_to_*` routing tools)* |
+| 2 | **Security Selection** | Screens the agency MBS universe for relative value. Identifies CHEAP / FAIR / RICH pools using OAS vs cohort benchmarks, flags risk factors (LTV, FICO, geography, convexity). | `screen_securities`, `get_pool_details`, `compute_bond_analytics`, `get_market_data` |
+| 3 | **What-If Analysis** | Models hypothetical changes to pool characteristics (WAC, WALA, LTV, FICO, CPR override) and quantifies the impact on OAS, OAD, yield, and price. Runs parallel rate shock scenarios. | `run_what_if`, `compute_bond_analytics`, `run_scenario_analysis`, `get_pool_details` |
+| 4 | **Portfolio Analytics** | Reports on the current state of the MBS book: book yield, OAS, OAD, EVE stress tests, KPIs, and position contributions. Flags EVE limit breaches and recommends corrective trades. | `get_portfolio_summary`, `get_portfolio_positions`, `compute_eve_profile`, `get_market_data` |
+| 5 | **Attribution** | Decomposes period-over-period changes in portfolio OAS, OAD, book yield, and EVE into constituent drivers (carry, sector spread, mix changes, prepay model effect). | `get_attribution`, `get_portfolio_summary`, `get_portfolio_positions` |
+| 6 | **Market Data** | Retrieves current SOFR/Treasury curves, cohort OAS levels, and rate environment context. Provides 2s10s slope, spread richness/cheapness signals, and CPR rate environment commentary. | `get_market_data` |
+| 7 | **Dashboard** | Answers questions about what is currently shown on the portfolio dashboard: NAV trajectory, top/bottom performers, sector allocation, health score, watchlist contents, and planning session status. | `get_nav_projection`, `get_top_performers`, `get_sector_allocation`, `get_portfolio_health`, `get_watchlist`, `get_planning_session` |
+
+### Agent–UI Coverage Map
+
+The table below shows which NEXUS specialist is engaged when a user asks a question from each UI tab.
+
+| UI Tab | Typical User Question | Agent(s) Invoked | Circumstance |
+|---|---|---|---|
+| **Dashboard** | "What does my NAV projection look like?" | Dashboard | Asking about the NAV chart, portfolio value trend, or projected runoff |
+| **Dashboard** | "Which pools performed best this month?" | Dashboard | Top/bottom performer rankings or MTD return |
+| **Dashboard** | "What is my sector allocation?" | Dashboard | Sector pie, product-type breakdown, or concentration |
+| **Dashboard** | "What is my portfolio health score?" | Dashboard | Health score or any sub-metric (duration, liquidity, concentration) |
+| **Dashboard** | "What is on my watchlist?" | Dashboard | Watchlist CUSIPs, prices, or unrealized P&L |
+| **Dashboard** | "Where is the planning session?" | Dashboard | Current planning workflow phase or open gate decisions |
+| **Portfolio Analytics** | "What is my portfolio OAD and EVE?" | Portfolio Analytics | Portfolio-level KPIs, risk metrics, or EVE stress results |
+| **Portfolio Analytics** | "Are we breaching our EVE limit?" | Portfolio Analytics | EVE limit monitoring or breach identification |
+| **Portfolio Analytics** | "Morning risk briefing" | Portfolio Analytics + Market Data | Multi-intent: portfolio state + current rate environment |
+| **Security Analytics** | "Find me cheap CC30 pools" | Security Selection | Pool screening with OAS/OAD/coupon filters |
+| **Security Analytics** | "What are the analytics for pool X?" | Security Selection | Single-pool OAS, OAD, convexity, or CPR |
+| **Security Analytics** | "Is CUSIP 3140X7GK4 cheap or rich?" | Security Selection | Relative value vs cohort benchmark |
+| **Attribution** | "Why did portfolio OAS change last month?" | Attribution | Period-over-period OAS, OAD, yield, or EVE decomposition |
+| **Attribution** | "What drove the EVE change?" | Attribution | EVE attribution into rate curve, mix, and prepay model drivers |
+| **What-If Sandbox** | "What happens if WAC goes up 50 bps?" | What-If Analysis | Characteristic modification and repricing |
+| **What-If Sandbox** | "Show me rate shocks ±200 bps" | What-If Analysis | Parallel scenario analysis across rate shock range |
+| **What-If Sandbox** | "What is the fair value price for this pool?" | What-If Analysis | OAS-targeting or model price solving |
+| **Portfolio Planning** | "What phase is the planning session in?" | Dashboard | Current phase or pending gate decisions |
+| **Portfolio Planning** | "What is the new-volume recommendation?" | Dashboard | Gate 1 output — monthly/annual purchase schedule |
+| **Any tab** | "What are current Treasury rates?" | Market Data | SOFR/Treasury curve levels, 2s10s slope, or OAS context |
+| **Any tab** | "Are agency MBS spreads tight or wide?" | Market Data | Cohort OAS levels vs historical ranges |
+
+> **Note:** The orchestrator handles multi-intent queries automatically. For example, "Give me the morning briefing" will trigger simultaneous calls to Portfolio Analytics, Market Data, and Dashboard, then synthesise all three responses into a single reply.
+
+---
+
 ## UI Modules
 
 | Tab | Description |
@@ -186,7 +233,8 @@ nexus_mbs/
 │       ├── what_if_analysis.md
 │       ├── portfolio_analytics.md
 │       ├── attribution.md
-│       └── market_data.md
+│       ├── market_data.md
+│       └── dashboard.md
 │
 ├── workflow/                        # Portfolio Planning multi-agent pipeline
 │   ├── scheduler.py                # APScheduler wrapper — daily/weekly/monthly runs

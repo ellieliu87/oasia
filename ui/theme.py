@@ -176,13 +176,47 @@ footer, .gradio-footer { display: none !important; }
 .avatar-menu-item:hover { background: var(--bg); }
 .avatar-menu-logout:hover { color: var(--coral); background: var(--coral-bg); }
 
+/* ── Bottom-align mixed label+input / button rows ── */
+#sa-search-row,
+#pp-resume-row {
+  align-items: flex-end !important;
+}
+
+/* ── Global: flatten all Gradio blocks in every tab ──
+   div.block   = gr.Column / gr.Group wrappers
+   label.block = form input containers (textbox, number, dropdown…)
+   .form       = gr.Group wrapper
+   .card (dashboard HTML) → untouched (different class / different DOM path) */
+#nexus-main-tabs .tabitem div.block,
+#nexus-main-tabs .tabitem label.block,
+#nexus-main-tabs .tabitem .form {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
 /* ── Plain section — no card border or background ── */
-.nexus-plain-section,
-.nexus-plain-section > .gap {
+.nexus-plain-section {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
   padding: 0 !important;
+  margin: 0 !important;
+}
+.nexus-plain-section > .gap,
+.nexus-plain-section > div {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+/* Strip the padding Gradio adds around individual gr.HTML blocks inside the section */
+.nexus-plain-html,
+.nexus-plain-html > * {
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  border: none !important;
 }
 
 /* ── BODY ROW ── */
@@ -803,32 +837,18 @@ div#nexus-main-tabs > div > [role="tablist"],
   overflow: hidden !important;
 }
 
-.chat-header {
+#nexus-agent-popup .chat-header {
   background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%);
   padding: 16px 20px;
   display: flex; align-items: center; gap: 12px;
   flex-shrink: 0;
 }
-.chat-avatar { width:36px; height:36px; border-radius:50%; background: rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
-.chat-name { font-size:14px; font-weight:700; color: white; font-family: var(--sans); }
-.chat-status { font-size:11px; color: rgba(255,255,255,0.65); display:flex; align-items:center; gap:5px; font-family: var(--sans); margin-top:2px; }
+#nexus-agent-popup .chat-avatar { width:36px; height:36px; border-radius:50%; background: rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+#nexus-agent-popup .chat-name { font-size:14px; font-weight:700; color: white !important; font-family: var(--sans); }
+#nexus-agent-popup .chat-status { font-size:11px; color: rgba(255,255,255,0.65); display:flex; align-items:center; gap:5px; font-family: var(--sans); margin-top:2px; }
 .live-dot { width:6px; height:6px; border-radius:50%; background:#4ade80; animation: livepulse 2s infinite; display:inline-block; }
 @keyframes livepulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
-.quick-chips {
-  display:flex; flex-wrap:wrap; gap:6px;
-  padding:10px 16px;
-  border-bottom:1px solid var(--border);
-  background: var(--surface);
-  flex-shrink: 0;
-}
-.qchip {
-  padding:5px 11px; background: var(--blue-light); color: var(--blue);
-  border-radius:20px; font-size:11.5px; font-weight:600; cursor:pointer;
-  border:1px solid rgba(59,111,212,0.2); transition: all 0.15s;
-  font-family: var(--sans); white-space: nowrap;
-}
-.qchip:hover { background: var(--blue); color: white; }
 
 /* ── CHAT MOUNT layout ── */
 /* :has() selects every ancestor wrapper between mount and chatbot,          */
@@ -1055,14 +1075,27 @@ div#nexus-main-tabs > div > [role="tablist"],
 
 /* ── PERFORMERS ── */
 .performer-list { padding:0 20px 16px; }
+.performer-col-hdr {
+  display:flex; align-items:center; gap:12px;
+  padding:6px 20px 4px;
+  border-bottom:1px solid var(--border-dark);
+}
+.performer-col-hdr span {
+  font-size:10px; font-weight:700; color:var(--text-4);
+  text-transform:uppercase; letter-spacing:.06em; font-family:var(--sans);
+}
+.performer-col-rank  { width:18px; flex-shrink:0; }
+.performer-col-pool  { flex:1; }
+.performer-col-trend { width:60px; flex-shrink:0; }
+.performer-col-ret   { min-width:60px; text-align:right; flex-shrink:0; }
 .performer-row  { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); }
 .performer-row:last-child { border-bottom:none; }
-.performer-rank { font-size:11px; font-weight:700; color:var(--text-4); font-family:var(--mono); width:18px; }
+.performer-rank { font-size:11px; font-weight:700; color:var(--text-4); font-family:var(--mono); width:18px; flex-shrink:0; }
 .performer-info { flex:1; }
 .performer-name { font-size:13px; font-weight:600; color:var(--text); }
 .performer-type { font-size:11px; color:var(--text-4); }
-.performer-chart { display:block; }
-.performer-return { font-size:14px; font-weight:700; font-family:var(--mono); color:var(--emerald); text-align:right; min-width:60px; }
+.performer-chart { display:block; flex-shrink:0; }
+.performer-return { font-size:14px; font-weight:700; font-family:var(--mono); color:var(--emerald); text-align:right; min-width:60px; flex-shrink:0; }
 .performer-return.neg { color:var(--coral); }
 
 /* ── WATCHLIST ── */

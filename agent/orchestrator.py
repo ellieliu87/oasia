@@ -59,6 +59,7 @@ _SUB_AGENT_SKILLS = [
     "portfolio_analytics",
     "attribution",
     "market_data",
+    "dashboard",
 ]
 
 
@@ -169,38 +170,48 @@ class AgentOrchestrator:
         if not self._has_api:
             return self._stub_response(user_message)
 
-        self._history.append({"role": "user", "content": user_message})
+        try:
+            from agents import trace as agents_trace
+            _trace_ctx = agents_trace("nexus_orchestrator")
+        except Exception:
+            _trace_ctx = None
 
-        system_prompt = self._build_orch_system_prompt()
+        def _run() -> str:
+            self._history.append({"role": "user", "content": user_message})
+            system_prompt = self._build_orch_system_prompt()
 
-        for _ in range(self.MAX_ITERATIONS):
-            response = self._orch_client.chat.completions.create(
-                model=self._orch_skill.model if self._orch_skill else "gpt-4o",
-                max_tokens=self._orch_skill.max_tokens if self._orch_skill else 1024,
-                messages=[{"role": "system", "content": system_prompt}] + self._history,
-                tools=self._delegate_tools,
-                tool_choice="auto",
-            )
-            msg = response.choices[0].message
-            self._history.append(msg.model_dump(exclude_unset=True))
+            for _ in range(self.MAX_ITERATIONS):
+                response = self._orch_client.chat.completions.create(
+                    model=self._orch_skill.model if self._orch_skill else "gpt-4o",
+                    max_tokens=self._orch_skill.max_tokens if self._orch_skill else 1024,
+                    messages=[{"role": "system", "content": system_prompt}] + self._history,
+                    tools=self._delegate_tools,
+                    tool_choice="auto",
+                )
+                msg = response.choices[0].message
+                self._history.append(msg.model_dump(exclude_unset=True))
 
-            finish = response.choices[0].finish_reason
+                finish = response.choices[0].finish_reason
 
-            if finish == "tool_calls" and msg.tool_calls:
-                # Dispatch each delegation to the appropriate sub-agent
-                tool_results = []
-                for tc in msg.tool_calls:
-                    result = self._dispatch_delegation(tc.function.name, tc.function.arguments)
-                    tool_results.append({
-                        "role": "tool",
-                        "tool_call_id": tc.id,
-                        "content": result,
-                    })
-                self._history.extend(tool_results)
-            else:
-                return msg.content or ""
+                if finish == "tool_calls" and msg.tool_calls:
+                    tool_results = []
+                    for tc in msg.tool_calls:
+                        result = self._dispatch_delegation(tc.function.name, tc.function.arguments)
+                        tool_results.append({
+                            "role": "tool",
+                            "tool_call_id": tc.id,
+                            "content": result,
+                        })
+                    self._history.extend(tool_results)
+                else:
+                    return msg.content or ""
 
-        return "Reached the maximum orchestration limit. Please try a more specific query."
+            return "Reached the maximum orchestration limit. Please try a more specific query."
+
+        if _trace_ctx is not None:
+            with _trace_ctx:
+                return _run()
+        return _run()
 
     def run_quick_query(self, query_name: str) -> str:
         """Run a pre-wired quick query by name."""
@@ -295,7 +306,17 @@ class AgentOrchestrator:
             return json.dumps({"error": f"No sub-agent registered for '{agent_key}'"})
 
         try:
-            response = agent.chat(query, fresh=True)
+            from agents.tracing import custom_span
+            _span_ctx = custom_span(f"delegate:{agent_key}", {"query": query[:200]})
+        except Exception:
+            _span_ctx = None
+
+        try:
+            if _span_ctx is not None:
+                with _span_ctx:
+                    response = agent.chat(query, fresh=True)
+            else:
+                response = agent.chat(query, fresh=True)
             return response
         except Exception as exc:
             return json.dumps({

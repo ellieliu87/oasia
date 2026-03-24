@@ -183,7 +183,7 @@ def run_projections(
             "interest_income":    float(portfolio_interest[t]),
             "principal_cashflow": float(portfolio_principal[t]),
             "total_cashflow":     float(portfolio_interest[t] + portfolio_principal[t]),
-            "book_yield":         float(portfolio_yield[t] * 100),
+            "book_yield":         float(portfolio_yield[t] * 100 if portfolio_yield[t] < 1.0 else portfolio_yield[t]),
             "oad":                float(portfolio_oad[t]),
             "oas":                float(portfolio_oas[t]),
         }

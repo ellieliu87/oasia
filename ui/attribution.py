@@ -227,6 +227,17 @@ def create_attribution_tab(shared_state: gr.State):
         except ValueError:
             return [None] * 8 + ["Error: Invalid date format.", gr.update()]
 
+        # Warn when using synthetic attribution data (no real portfolio run in DB)
+        try:
+            from db.projections import get_latest_portfolio_kpis
+            if get_latest_portfolio_kpis() is None:
+                gr.Warning(
+                    "Simplified approximation in use — attribution figures are synthetic estimates. "
+                    "Run Portfolio Analytics first for real attribution data."
+                )
+        except Exception:
+            pass
+
         oas_attr, oad_attr, yield_attr, eve_attr = _run_attribution(start, end)
 
         # Build waterfall charts

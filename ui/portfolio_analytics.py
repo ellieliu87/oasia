@@ -792,15 +792,16 @@ def create_portfolio_analytics_tab(shared_state: gr.State):
     _PRODUCT_TYPE_CHOICES = ["All Product Types"] + list(_PRODUCT_TYPE_MAP.keys())
 
     with gr.Column(visible=False, elem_classes=["nexus-plain-section"]) as ts_section_col:
-        gr.HTML("<hr style='border:none;border-top:1px solid #E2E8F0;margin:24px 0 0;'>")
         gr.HTML(
+            "<div style='border-top:1px solid #E2E8F0;margin:8px 0 16px;padding-top:20px;'>"
             "<div style='font-size:15px;font-weight:600;color:#1E293B;"
-            "font-family:DM Serif Display,Georgia,serif;margin:20px 0 4px;'>"
+            "font-family:DM Serif Display,Georgia,serif;margin-bottom:4px;'>"
             "Position Time Series Explorer</div>"
-            "<div style='font-size:12px;color:#64748B;font-family:DM Sans,sans-serif;"
-            "margin-bottom:16px;'>Select metrics and pools below, then click "
-            "<strong>Plot</strong> to generate time series charts from historical "
-            "position snapshots.</div>"
+            "<div style='font-size:12px;color:#64748B;font-family:DM Sans,sans-serif;'>"
+            "Select metrics and pools below, then click <strong>Plot</strong> to generate "
+            "time series charts from historical position snapshots.</div>"
+            "</div>",
+            elem_classes=["nexus-plain-html"],
         )
 
         with gr.Row():

@@ -569,7 +569,7 @@ def create_security_analytics_tab(shared_state: gr.State):
     )
 
     # ─── Step 1: Search bar + Filter accordion ────────────────────────────────
-    with gr.Row():
+    with gr.Row(elem_id="sa-search-row"):
         search_input = gr.Textbox(
             placeholder="Search by Pool ID or CUSIP…",
             label="Search",
@@ -656,6 +656,16 @@ def create_security_analytics_tab(shared_state: gr.State):
     ]
 
     def _do_screen(products, cmin, cmax, omin, omax, oadmin, oadmax, fmin, lmax, search):
+        # Warn when no portfolio run exists — analytics are approximations
+        try:
+            from db.projections import get_latest_portfolio_kpis
+            if get_latest_portfolio_kpis() is None:
+                gr.Warning(
+                    "Simplified approximation in use — no portfolio run found in DB. "
+                    "Run Portfolio Analytics for full accuracy."
+                )
+        except Exception:
+            pass
         try:
             df  = _get_merged_df(products, cmin, cmax, omin, omax, oadmin, oadmax, fmin, lmax, search)
             tbl = _format_table(df)

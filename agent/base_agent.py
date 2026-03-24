@@ -98,6 +98,11 @@ class BaseAgent:
         if self._client is None:
             return "[Agent unavailable: OPENAI_API_KEY not set]"
 
+        try:
+            from agents.tracing import custom_span as _custom_span
+        except Exception:
+            _custom_span = None
+
         self._history.append({"role": "user", "content": user_message})
 
         system_prompt = self._build_system_prompt(extra_context or self.extra_context)
@@ -124,7 +129,11 @@ class BaseAgent:
                 # Execute all tool calls and collect results
                 tool_results = []
                 for tc in msg.tool_calls:
-                    result = self._execute_tool(tc.function.name, tc.function.arguments)
+                    if _custom_span is not None:
+                        with _custom_span(f"tool:{tc.function.name}", {"agent": self.skill.name}):
+                            result = self._execute_tool(tc.function.name, tc.function.arguments)
+                    else:
+                        result = self._execute_tool(tc.function.name, tc.function.arguments)
                     tool_results.append({
                         "role": "tool",
                         "tool_call_id": tc.id,

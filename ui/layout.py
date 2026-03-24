@@ -57,9 +57,11 @@ PORTFOLIO_STATE = {
             {"name":"Callable Debt","pct":3,  "color":"#64748B"},
         ],
         "performers": [
-            {"rank":1, "name":"FNMA CC15 5.5", "type":"Conv 15-yr", "ret":+2.14, "spark":[1,1.3,1.1,1.5,1.9,2.1,2.14]},
-            {"rank":2, "name":"FHLMC CC30 5.5","type":"Conv 30-yr", "ret":+1.87, "spark":[0.5,0.8,1.2,1.4,1.6,1.8,1.87]},
-            {"rank":3, "name":"GNMA GN30 6.0", "type":"GNMA 30-yr", "ret":+1.52, "spark":[0.3,0.6,0.9,1.1,1.3,1.5,1.52]},
+            {"rank":1, "name":"FNMA CC15 5.5",  "type":"Conv 15-yr", "ret":+2.14, "spark":[1.0,1.3,1.1,1.5,1.9,2.1,2.14]},
+            {"rank":2, "name":"FHLMC CC30 5.5", "type":"Conv 30-yr", "ret":+1.87, "spark":[0.5,0.8,1.2,1.4,1.6,1.8,1.87]},
+            {"rank":3, "name":"GNMA GN30 6.0",  "type":"GNMA 30-yr", "ret":+1.52, "spark":[0.3,0.6,0.9,1.1,1.3,1.5,1.52]},
+            {"rank":4, "name":"FNMA CC30 6.0",  "type":"Conv 30-yr", "ret":+1.23, "spark":[0.2,0.4,0.6,0.8,0.9,1.1,1.23]},
+            {"rank":5, "name":"FHLMC CC15 6.0", "type":"Conv 15-yr", "ret":+0.98, "spark":[0.1,0.2,0.4,0.6,0.7,0.9,0.98]},
         ],
         "watchlist": [
             {"name":"FNMA CC30 7.0","meta":"30-yr · 4.6 OAD","price":103.44,"chg":+0.28,"up":True},
@@ -104,6 +106,8 @@ PORTFOLIO_STATE = {
             {"rank":1, "name":"GNMA GN30 6.0",  "type":"GNMA 30-yr", "ret":-1.78, "spark":[0.2,-0.1,-0.5,-0.9,-1.2,-1.6,-1.78]},
             {"rank":2, "name":"FNMA CC15 5.5",   "type":"Conv 15-yr", "ret":-2.44, "spark":[0.1,-0.3,-0.8,-1.3,-1.8,-2.2,-2.44]},
             {"rank":3, "name":"FHLMC CC30 5.5",  "type":"Conv 30-yr", "ret":-3.12, "spark":[0.0,-0.4,-0.9,-1.5,-2.2,-2.7,-3.12]},
+            {"rank":4, "name":"FNMA CC30 6.0",   "type":"Conv 30-yr", "ret":-3.55, "spark":[0.0,-0.5,-1.1,-1.8,-2.5,-3.1,-3.55]},
+            {"rank":5, "name":"FHLMC CC15 6.0",  "type":"Conv 15-yr", "ret":-3.89, "spark":[0.0,-0.6,-1.2,-2.0,-2.7,-3.4,-3.89]},
         ],
         "watchlist": [
             {"name":"FNMA CC30 7.0","meta":"30-yr · 4.6 OAD","price": 99.12,"chg":-2.88,"up":False},
@@ -148,6 +152,8 @@ PORTFOLIO_STATE = {
             {"rank":1, "name":"FHLMC CC30 5.5", "type":"Conv 30-yr","ret":+0.80, "spark":[0.2,0.3,0.4,0.5,0.6,0.72,0.80]},
             {"rank":2, "name":"FNMA CC30 6.0",  "type":"Conv 30-yr","ret":+0.74, "spark":[0.1,0.2,0.35,0.45,0.56,0.68,0.74]},
             {"rank":3, "name":"GNMA GN30 6.0",  "type":"GNMA 30-yr","ret":+0.58, "spark":[0.1,0.2,0.3,0.38,0.45,0.52,0.58]},
+            {"rank":4, "name":"FNMA CC15 5.5",  "type":"Conv 15-yr","ret":+0.41, "spark":[0.0,0.1,0.2,0.28,0.34,0.38,0.41]},
+            {"rank":5, "name":"GNMA GN15 6.0",  "type":"GNMA 15-yr","ret":+0.27, "spark":[0.0,0.05,0.1,0.16,0.21,0.24,0.27]},
         ],
         "watchlist": [
             {"name":"FNMA CC30 7.0","meta":"30-yr · 4.6 OAD","price":104.20,"chg":+0.76,"up":True},
@@ -201,13 +207,44 @@ def _load_watchlist_for_display() -> list[dict]:
         return []
 
 
+def _no_run_state() -> dict:
+    """Empty state returned when no portfolio run has been performed."""
+    return {
+        "source":         "no_run",
+        "nav":            None,
+        "nav_chg":        None,
+        "book_yield":     None,
+        "book_yield_chg": None,
+        "oad":            None,
+        "oad_chg":        None,
+        "oas":            None,
+        "oas_chg":        None,
+        "health_score":   None,
+        "health_metrics": [],
+        "holdings":       [],
+        "sectors":        [],
+        "performers":     [],
+        "watchlist":      _load_watchlist_for_display(),
+        "hist_labels":    [],
+        "hist_navs":      [],
+        "proj_labels":    [],
+        "proj_navs":      [],
+    }
+
+
 def _load_dashboard_data(run_date: str = "Latest") -> dict:
-    """Load real portfolio data. Falls back to PORTFOLIO_STATE['default'] on error."""
+    """Load real portfolio data from DB run. Returns no_run state if no run exists."""
     try:
+        from db.projections import get_latest_portfolio_kpis, get_portfolio_projections
+
+        # Check if a portfolio run exists in the DB
+        kpis = get_latest_portfolio_kpis()
+        if kpis is None:
+            return _no_run_state()
+
         from data.position_data import (
             get_portfolio_summary, get_position_data, get_historical_nav
         )
-        from db.projections import get_latest_portfolio_kpis, get_portfolio_projections
 
         as_of = None
         if run_date and run_date != "Latest":
@@ -289,23 +326,48 @@ def _load_dashboard_data(run_date: str = "Latest") -> dict:
                     spark = [round(base * j, 3) for j in range(7)]
                     performers.append({"rank": i, **p, "spark": spark})
         if not performers:
-            performers = PORTFOLIO_STATE["default"]["performers"]
+            performers = []
 
-        # Health metrics
+        # Health metrics — all computed from real position data
         oad = float(summary.get("oad", 4.2))
         dur_score = max(40, round(95 - abs(oad - 4.2) * 20))
         dur_color = "#059669" if dur_score >= 80 else "#D97706" if dur_score >= 60 else "#E5484D"
+
+        # Convexity score: higher (less negative) convexity = better
+        avg_convexity = float(pos_df["convexity"].mean()) if not pos_df.empty else 0.0
+        conv_score = max(40, min(100, round(85 + avg_convexity * 15)))
+        conv_color = "#3B6FD4" if conv_score >= 70 else "#D97706" if conv_score >= 55 else "#E5484D"
+
+        # Liquidity: % of MV in TBA-eligible product types
+        tba_types = {"CC30", "CC15", "GN30", "GN15"}
+        tba_mv  = pos_df[pos_df["product_type"].isin(tba_types)]["market_value"].sum() if not pos_df.empty else 0
+        liq_pct = tba_mv / total_mv * 100 if total_mv > 0 else 0.0
+        liq_score = max(40, min(100, round(liq_pct)))
+        liq_color = "#059669" if liq_score >= 80 else "#D97706" if liq_score >= 60 else "#E5484D"
+
+        # Concentration: largest single issuer by MV %
+        if not pos_df.empty:
+            def _issuer(pid: str) -> str:
+                return pid.split("_")[0] if "_" in str(pid) else str(pid)
+            issuer_mv = pos_df.copy()
+            issuer_mv["issuer_key"] = issuer_mv["pool_id"].apply(_issuer)
+            top_issuer_pct = issuer_mv.groupby("issuer_key")["market_value"].sum().max() / total_mv * 100 if total_mv > 0 else 0.0
+        else:
+            top_issuer_pct = 0.0
+        conc_score = max(40, min(100, round(100 - max(0, top_issuer_pct - 20) * 2)))
+        conc_color = "#059669" if conc_score >= 80 else "#D97706" if conc_score >= 60 else "#E5484D"
+
         health_metrics = [
             {"name": "Duration Risk",  "desc": f"OAD {oad:.2f} vs bench 4.2",
              "score": dur_score, "color": dur_color},
-            {"name": "Convexity",      "desc": "Negative convexity exposure",
-             "score": 76, "color": "#3B6FD4"},
+            {"name": "Convexity",      "desc": f"Avg convexity {avg_convexity:.2f}",
+             "score": conv_score, "color": conv_color},
             {"name": "Credit Quality", "desc": "Agency / GSE only",
              "score": 100, "color": "#059669"},
-            {"name": "Liquidity",      "desc": "TBA-eligible ≥ 85%",
-             "score": 88, "color": "#059669"},
-            {"name": "Concentration",  "desc": "Single-issuer cap 35%",
-             "score": 78, "color": "#059669"},
+            {"name": "Liquidity",      "desc": f"TBA-eligible {liq_pct:.0f}%",
+             "score": liq_score, "color": liq_color},
+            {"name": "Concentration",  "desc": f"Top issuer {top_issuer_pct:.0f}%",
+             "score": conc_score, "color": conc_color},
         ]
         health_score = round(sum(m["score"] for m in health_metrics) / len(health_metrics))
 
@@ -317,14 +379,19 @@ def _load_dashboard_data(run_date: str = "Latest") -> dict:
         proj_labels = [str(p.get("projection_date", ""))[:7] for p in projs[:36]]
         proj_navs   = [round(float(p.get("portfolio_nav", 0)) / 1e9, 3) for p in projs[:36]]
 
-        # KPI from projections if available
-        kpis = get_latest_portfolio_kpis()
+        # KPI from projections (already loaded above — kpis is guaranteed non-None here)
         book_yield = float(summary.get("book_yield", 5.5))
         oas_val    = round(float(summary.get("oas", 48)))
         if kpis:
             if kpis.get("book_yield"):
                 by = float(kpis["book_yield"])
-                book_yield = by if by > 1.0 else by * 100
+                # Normalise: decimal (0.054) → %, already-% (5.44) → keep, stale ×100 bug (544) → divide
+                if by > 50:
+                    book_yield = by / 100
+                elif by > 1.0:
+                    book_yield = by
+                else:
+                    book_yield = by * 100
             if kpis.get("oad"):
                 oad = float(kpis["oad"])
             if kpis.get("oas"):
@@ -335,7 +402,7 @@ def _load_dashboard_data(run_date: str = "Latest") -> dict:
             "nav":            float(summary.get("nav", 0)),
             "nav_chg":        float(summary.get("nav_chg", 0.0)),
             "book_yield":     book_yield,
-            "book_yield_chg": float(summary.get("book_yield_chg", 0.0)),
+            "book_yield_chg": (lambda v: v * 100 if abs(v) < 0.5 else v)(float(summary.get("book_yield_chg", 0.0))),
             "oad":            oad,
             "oad_chg":        float(summary.get("oad_chg", 0.0)),
             "oas":            oas_val,
@@ -355,20 +422,51 @@ def _load_dashboard_data(run_date: str = "Latest") -> dict:
         }
     except Exception as _ex:
         import logging
-        logging.getLogger("nexus").debug("_load_dashboard_data fallback: %s", _ex)
-        d = dict(PORTFOLIO_STATE["default"])
-        d["source"]      = "demo"
-        d["hist_labels"] = list(d["chart_labels"])
-        d["hist_navs"]   = [round(v / 1000, 3) for v in d["chart_data"]]
-        d["proj_labels"] = []
-        d["proj_navs"]   = []
-        d["watchlist"]   = _load_watchlist_for_display()
-        return d
+        logging.getLogger("nexus").warning("_load_dashboard_data error: %s", _ex)
+        # Return zero/empty state — never use hardcoded demo numbers for the default view
+        return {
+            "source":         "empty",
+            "nav":            0.0,
+            "nav_chg":        0.0,
+            "book_yield":     0.0,
+            "book_yield_chg": 0.0,
+            "oad":            0.0,
+            "oad_chg":        0.0,
+            "oas":            0,
+            "oas_chg":        0,
+            "health_score":   0,
+            "health_metrics": [],
+            "holdings":       [],
+            "sectors":        [],
+            "performers":     [],
+            "watchlist":      _load_watchlist_for_display(),
+            "hist_labels":    [],
+            "hist_navs":      [],
+            "proj_labels":    [],
+            "proj_navs":      [],
+        }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # HTML builders
 # ─────────────────────────────────────────────────────────────────────────────
+
+def build_run_needed_banner() -> str:
+    """Banner shown on the dashboard when no portfolio run data exists in the DB."""
+    return (
+        '<div style="display:flex;align-items:center;gap:12px;padding:14px 20px;'
+        'background:#FEF3C7;border:1px solid #D97706;border-radius:8px;margin-bottom:16px;">'
+        '<span style="font-size:20px;">⚠️</span>'
+        '<div>'
+        '<div style="font-weight:700;color:#92400E;font-size:13px;">No portfolio run data found</div>'
+        '<div style="color:#B45309;font-size:12px;margin-top:2px;">'
+        'Dashboard metrics are unavailable. Go to the <strong>Portfolio Analytics</strong> tab '
+        'and click <strong>Run</strong> to generate a portfolio run, then return here to view results.'
+        '</div>'
+        '</div>'
+        '</div>'
+    )
+
 
 def _fmt_nav(v: float) -> str:
     if v >= 1e9:
@@ -395,8 +493,23 @@ def build_kpi_cards(data: dict) -> str:
             f'  <div class="kpi-accent" style="background:{accent_color};"></div>'
             f'</div>'
         )
+
+    no_data = data.get("source") in ("no_run", "empty") or data.get("nav") is None
+
+    if no_data:
+        blank = '<span style="color:#94A3B8;">--</span>'
+        na    = '<span style="color:#94A3B8;font-size:11px;">no run data</span>'
+        return (
+            f'<div class="kpi-grid">'
+            + kpi("Total Portfolio NAV",  blank, na, "#3B6FD4")
+            + kpi("Book Yield",           blank, na, "#059669")
+            + kpi("OA Duration",          blank, na, "#D97706")
+            + kpi("Avg OAS",              blank, na, "#E5484D")
+            + '</div>'
+        )
+
     chg_nav = _badge(round(data["nav_chg"], 2), "%")
-    chg_by  = _badge(round(data["book_yield_chg"], 2), " bps")
+    chg_by  = _badge(round(data["book_yield_chg"], 2), "%")
     chg_oad = _badge(round(data["oad_chg"], 2))
     chg_oas = _badge(data["oas_chg"], " bps")
     return (
@@ -588,6 +701,10 @@ def build_projection_chart(data: dict) -> str:
 
 def build_sector_chart(data: dict) -> str:
     s = data
+    if not s.get("sectors"):
+        return ('<div class="card sector-card"><div class="card-header">'
+                '<span class="card-title-serif">Sector Allocation</span></div>'
+                '<div style="padding:24px;text-align:center;color:#94A3B8;font-size:13px;">No position data</div></div>')
     rows = ""
     for sec in s["sectors"]:
         rows += (
@@ -598,38 +715,13 @@ def build_sector_chart(data: dict) -> str:
             f'  <span class="sector-pct">{sec["pct"]}%</span>'
             f'</div>'
         )
-    colors_js = str([sec["color"] for sec in s["sectors"]])
-    data_js   = str([sec["pct"]   for sec in s["sectors"]])
-    labels_js = str([sec["name"]  for sec in s["sectors"]])
     return f"""
 <div class="card sector-card">
   <div class="card-header">
     <span class="card-title-serif">Sector Allocation</span>
   </div>
-  <div style="padding:0 20px 12px;height:160px;">
-    <canvas id="sector-chart"></canvas>
-  </div>
   <div class="sector-list">{rows}</div>
 </div>
-<script>
-(function(){{
-  function renderSectorChart() {{
-    if (!window.Chart) {{ setTimeout(renderSectorChart, 120); return; }}
-    var ctx = document.getElementById('sector-chart');
-    if (!ctx) {{ setTimeout(renderSectorChart, 120); return; }}
-    if (window._sectorChart) {{ window._sectorChart.destroy(); window._sectorChart = null; }}
-    window._sectorChart = new Chart(ctx, {{
-      type: 'doughnut',
-      data: {{ labels: {labels_js}, datasets: [{{ data: {data_js}, backgroundColor: {colors_js}, borderWidth: 0, hoverOffset: 4 }}] }},
-      options: {{
-        responsive: true, maintainAspectRatio: false, cutout: '68%',
-        plugins: {{ legend: {{ display: false }}, tooltip: {{ callbacks: {{ label: function(c){{ return ' ' + c.label + ': ' + c.raw + '%'; }} }} }} }}
-      }}
-    }});
-  }}
-  renderSectorChart();
-}})();
-</script>
 """
 
 
@@ -662,6 +754,10 @@ def build_health_card(data: dict) -> str:
 
 def build_holdings_card(data: dict) -> str:
     s = data
+    if not s.get("holdings"):
+        return ('<div class="card"><div class="card-header">'
+                '<span class="card-title-serif">Top Holdings</span></div>'
+                '<div style="padding:24px;text-align:center;color:#94A3B8;font-size:13px;">No position data</div></div>')
     rows = ""
     for h in s["holdings"][:5]:
         chg_cls = "delta-pos" if h["chg"] >= 0 else "delta-neg"
@@ -710,6 +806,11 @@ def _spark_script(cid: str, spark_js: str, color: str) -> str:
 
 def build_performers_card(data: dict) -> str:
     s = data
+    if not s.get("performers"):
+        return ('<div class="card"><div class="card-header">'
+                '<span class="card-title-serif">Top Performers</span>'
+                '<span class="card-action">This month</span></div>'
+                '<div style="padding:24px;text-align:center;color:#94A3B8;font-size:13px;">Insufficient snapshot history</div></div>')
     rows = ""
     for p in s["performers"][:5]:
         pos         = p["ret"] >= 0
@@ -730,23 +831,35 @@ def build_performers_card(data: dict) -> str:
             f'</div>'
             + _spark_script(cid, spark_js, spark_color)
         )
+    col_hdr = (
+        '<div class="performer-col-hdr">'
+        '  <span class="performer-col-rank">Rank</span>'
+        '  <span class="performer-col-pool">Pool · Sector</span>'
+        '  <span class="performer-col-trend">Trend</span>'
+        '  <span class="performer-col-ret">MTD Return</span>'
+        '</div>'
+    )
     return (
         '<div class="card">'
         '<div class="card-header">'
         '<span class="card-title-serif">Top Performers</span>'
         '<span class="card-action">This month</span>'
         '</div>'
+        f'{col_hdr}'
         f'<div class="performer-list">{rows}</div>'
         '</div>'
     )
 
 
-def build_watchlist_card(data: dict) -> str:
+def build_watchlist_card(data: dict, username: str = "default") -> str:
     s = data
-    # Try to load from real watchlist store first
+    # Load real watchlist for this user; fall back to demo data if empty
     try:
         from data.watchlist_store import load_watchlist
-        store_items = load_watchlist("default")
+        store_items = load_watchlist(username)
+        # Also try "default" as a fallback so demo data is visible on first run
+        if not store_items and username != "default":
+            store_items = load_watchlist("default")
     except Exception:
         store_items = []
 
@@ -796,7 +909,8 @@ def build_watchlist_card(data: dict) -> str:
 """
 
 
-def build_full_dashboard(run_date: str = "Latest", scenario: str = "default") -> str:
+def build_full_dashboard(run_date: str = "Latest", scenario: str = "default",
+                         username: str = "default") -> str:
     if scenario and scenario != "default":
         data = dict(PORTFOLIO_STATE.get(scenario, PORTFOLIO_STATE["default"]))
         data["source"]      = "demo"
@@ -807,9 +921,12 @@ def build_full_dashboard(run_date: str = "Latest", scenario: str = "default") ->
         data["watchlist"]   = _load_watchlist_for_display()
     else:
         data = _load_dashboard_data(run_date)
-    # Compute projected MV if not already available (fallback & demo paths)
-    if not data.get("proj_navs"):
+    # Compute projected MV only when real data is present (not for no_run/empty states)
+    if not data.get("proj_navs") and data.get("source") not in ("no_run", "empty"):
         data["proj_labels"], data["proj_navs"] = _compute_proj_mv()
+
+    is_no_run  = data.get("source") in ("no_run", "empty")
+    run_banner = build_run_needed_banner() if is_no_run else ""
 
     kpis       = build_kpi_cards(data)
     chart      = build_projection_chart(data)
@@ -817,13 +934,15 @@ def build_full_dashboard(run_date: str = "Latest", scenario: str = "default") ->
     holdings   = build_holdings_card(data)
     sector     = build_sector_chart(data)
     performers = build_performers_card(data)
-    watchlist  = build_watchlist_card(data)
+    watchlist  = build_watchlist_card(data, username=username)
     src_badge  = '' if data.get("source") == "real" else '<span style="font-size:10px;color:#94A3B8;margin-left:8px;">[demo data]</span>'
     date_label = f"Data as of {run_date}" if run_date and run_date != "Latest" else "Latest data"
 
     return f"""
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <div class="nexus-tab-content fade-up">
+
+  {run_banner}
 
   <!-- KPIs -->
   {kpis}
@@ -960,24 +1079,17 @@ _FAB_AND_POPUP_HTML = """
 <button id="nexus-agent-fab" aria-label="Open Oasia Agent">✦</button>
 
 <div id="nexus-agent-popup" role="dialog" aria-label="Oasia Agent">
-  <div class="chat-header" style="flex-shrink:0;">
-    <div class="chat-avatar">✦</div>
-    <div style="flex:1;">
-      <div class="chat-name">Oasia Agent</div>
-      <div class="chat-status"><span class="live-dot"></span>6 agents · OpenAI SDK</div>
+  <div style="background:linear-gradient(135deg,#0F1F3D 0%,#1A3060 100%);padding:16px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0;">
+    <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;color:white;">✦</div>
+    <div style="flex:1;min-width:0;overflow:hidden;">
+      <div style="font-size:14px;font-weight:700;color:white;font-family:system-ui,sans-serif;line-height:1.2;">Oasia Agent</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.65);display:flex;align-items:center;gap:5px;font-family:system-ui,sans-serif;margin-top:3px;"><span class="live-dot"></span>7 agents · OpenAI SDK</div>
     </div>
     <button id="nexus-popup-close"
-            style="margin-left:auto;background:rgba(255,255,255,0.12);border:none;
+            style="flex-shrink:0;background:rgba(255,255,255,0.12);border:none;
                    color:white;width:28px;height:28px;border-radius:50%;cursor:pointer;
                    font-size:14px;display:flex;align-items:center;justify-content:center;
-                   transition:background 0.15s;flex-shrink:0;">✕</button>
-  </div>
-  <div class="quick-chips">
-    <span class="qchip" data-query="Show portfolio OAS">Portfolio OAS</span>
-    <span class="qchip" data-query="What is my duration gap?">Duration Gap</span>
-    <span class="qchip" data-query="Find cheap CC30 pools">Cheap CC30</span>
-    <span class="qchip" data-query="Run stress test +100bps">Stress +100</span>
-    <span class="qchip" data-query="Explain convexity risk">Convexity</span>
+                   transition:background 0.15s;">✕</button>
   </div>
   <div id="nexus-agent-chat-mount" style="flex:1;display:flex;flex-direction:column;overflow:hidden;"></div>
 </div>
@@ -1747,7 +1859,7 @@ def create_layout() -> gr.Blocks:
 
                     with gr.Tab("Watchlist", id=4):
                         with gr.Column(elem_classes=["nexus-tab-content"]):
-                            create_watchlist_tab(shared_state)
+                            create_watchlist_tab(shared_state, dashboard_html)
 
                     with gr.Tab("Portfolio Planning", id=5):
                         with gr.Column(elem_classes=["nexus-tab-content"]):

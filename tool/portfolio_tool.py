@@ -96,83 +96,109 @@ TOOL_SCHEMAS: list[dict] = [
 
 def _handle_get_portfolio_summary(inp: dict) -> str:
     from datetime import datetime, date as date_type
-    from data.market_data import load_market_data
-
     date_str = inp.get("as_of_date", "")
-    as_of    = datetime.strptime(date_str, "%Y-%m-%d").date() if date_str else date_type.today()
+    as_of = datetime.strptime(date_str, "%Y-%m-%d").date() if date_str else None
 
-    try:
-        md   = load_market_data(as_of)
-        oad  = 4.21
-        base = 12_240_000.0
-        eve_chg = -oad * 200 / 10_000.0 * base
-    except Exception:
-        base, eve_chg = 12_240_000.0, -1_032_240.0
+    from data.position_data import get_portfolio_summary
+    summary = get_portfolio_summary(as_of)
+    if not summary:
+        return json.dumps({"error": "No position data available"})
+
+    total_mv  = float(summary.get("nav", 0))
+    total_bv  = float(summary.get("book_value", 0))
+    oad       = float(summary.get("oad", 0))
+    eve_limit = -5.0
+    # Simple linear EVE approximation: ΔP ≈ -OAD × Δy × MV
+    eve_up200_delta = -oad * 200 / 10_000.0 * total_mv
+    eve_up200_pct   = round(eve_up200_delta / total_mv * 100, 2) if total_mv else 0.0
+
+    by = float(summary.get("book_yield", 0))
+    book_yield_pct = by * 100 if by < 1.0 else by
 
     return json.dumps({
-        "as_of_date":          as_of.isoformat(),
-        "total_book_value":    12_000_000,
-        "total_market_value":  12_240_000,
-        "position_count":      3,
-        "weighted_oas_bps":    52.3,
-        "weighted_oad_years":  4.21,
-        "weighted_convexity":  -0.82,
-        "total_yield_pct":     6.15,
-        "book_yield_pct":      6.10,
-        "eve_base":            12_240_000,
-        "eve_up200_bps":       round(base + eve_chg, 0),
-        "eve_up200_change_pct": round(eve_chg / base * 100, 2),
-        "eve_limit_pct":       -5.0,
-        "eve_breach":          round(eve_chg / base * 100, 2) < -5.0,
+        "as_of_date":            (as_of or date_type.today()).isoformat(),
+        "total_book_value":      round(total_bv),
+        "total_market_value":    round(total_mv),
+        "position_count":        int(summary.get("n_positions", 0)),
+        "weighted_oas_bps":      float(summary.get("oas", 0)),
+        "weighted_oad_years":    oad,
+        "weighted_convexity":    float(summary.get("convexity", 0)),
+        "book_yield_pct":        round(book_yield_pct, 4),
+        "annual_income":         round(float(summary.get("annual_income", 0))),
+        "unrealized_pnl":        round(float(summary.get("unrealized_pnl", 0))),
+        "eve_base":              round(total_mv),
+        "eve_up200_delta":       round(eve_up200_delta),
+        "eve_up200_change_pct":  eve_up200_pct,
+        "eve_limit_pct":         eve_limit,
+        "eve_breach":            eve_up200_pct < eve_limit,
     }, default=str)
 
 
 def _handle_get_portfolio_positions(inp: dict) -> str:
-    positions = [
-        {
-            "pool_id": "TEST-POOL-30YR", "product_type": "CC30",
-            "face_amount": 5_000_000, "book_price": 101.5, "market_price": 102.1,
-            "coupon_pct": 6.0, "wac_pct": 6.5, "wala_months": 12, "wam_months": 348,
-            "oas_bps": 54.2, "oad_years": 4.52, "convexity": -0.91,
-            "model_cpr_pct": 12.4, "book_yield_pct": 6.08,
-        },
-        {
-            "pool_id": "TEST-POOL-15YR", "product_type": "CC15",
-            "face_amount": 3_000_000, "book_price": 99.5, "market_price": 100.2,
-            "coupon_pct": 5.5, "wac_pct": 5.9, "wala_months": 6, "wam_months": 174,
-            "oas_bps": 36.8, "oad_years": 3.21, "convexity": -0.44,
-            "model_cpr_pct": 9.8, "book_yield_pct": 5.62,
-        },
-        {
-            "pool_id": "TEST-POOL-GN30", "product_type": "GN30",
-            "face_amount": 4_000_000, "book_price": 103.0, "market_price": 103.8,
-            "coupon_pct": 6.5, "wac_pct": 7.0, "wala_months": 24, "wam_months": 336,
-            "oas_bps": 58.1, "oad_years": 4.18, "convexity": -0.76,
-            "model_cpr_pct": 14.2, "book_yield_pct": 6.31,
-        },
-    ]
-    pt = inp.get("product_type")
-    if pt:
-        positions = [p for p in positions if p["product_type"] == pt]
-    return json.dumps({"positions": positions, "count": len(positions)}, default=str)
+    from datetime import datetime, date as date_type
+    date_str = inp.get("as_of_date", "")
+    as_of = datetime.strptime(date_str, "%Y-%m-%d").date() if date_str else None
+    pt_filter = inp.get("product_type", "")
+
+    from data.position_data import get_position_data
+    pos = get_position_data(as_of)
+    if as_of is None:
+        pos = pos[pos["snapshot_date"] == pos["snapshot_date"].max()]
+    if pt_filter:
+        pos = pos[pos["product_type"] == pt_filter]
+
+    positions = []
+    for _, row in pos.iterrows():
+        by = float(row["book_yield"])
+        positions.append({
+            "pool_id":        row["pool_id"],
+            "cusip":          row["cusip"],
+            "product_type":   row["product_type"],
+            "coupon_pct":     float(row["coupon"]),
+            "par_value":      float(row["par_value"]),
+            "market_value":   float(row["market_value"]),
+            "book_value":     float(row["book_value"]),
+            "market_price":   float(row["market_price"]),
+            "book_price":     float(row["book_price"]),
+            "book_yield_pct": round(by * 100 if by < 1.0 else by, 4),
+            "oas_bps":        float(row["oas_bps"]),
+            "oad_years":      float(row["oad_years"]),
+            "convexity":      float(row["convexity"]),
+            "cpr":            float(row["cpr"]),
+            "wala":           int(row["wala"]),
+            "wam":            int(row["wam"]),
+            "unrealized_pnl_pct": float(row["unrealized_pnl_pct"]),
+        })
+    return json.dumps({"positions": positions, "count": len(positions),
+                       "as_of_date": str(pos["snapshot_date"].iloc[0]) if not pos.empty else None},
+                      default=str)
 
 
 def _handle_compute_eve_profile(inp: dict) -> str:
+    from datetime import datetime, date as date_type
     shocks   = inp.get("shocks_bps", [-300, -200, -100, 0, 100, 200, 300])
-    base_eve = 12_240_000.0
-    oad      = 4.21
+    date_str = inp.get("as_of_date", "")
+    as_of    = datetime.strptime(date_str, "%Y-%m-%d").date() if date_str else None
+
+    from data.position_data import get_portfolio_summary
+    summary  = get_portfolio_summary(as_of)
+    base_eve = float(summary.get("nav", 0)) if summary else 0.0
+    oad      = float(summary.get("oad", 4.2)) if summary else 4.2
+    eve_limit = -5.0
+
     results: dict[str, Any] = {}
     for shock in shocks:
         delta_pct = -oad * shock / 10_000.0
-        eve       = base_eve * (1.0 + delta_pct)
-        d_eve     = eve - base_eve
+        eve   = base_eve * (1.0 + delta_pct)
+        d_eve = eve - base_eve
         results[str(shock)] = {
-            "eve":            round(eve, 0),
-            "delta_eve":      round(d_eve, 0),
-            "pct_change":     round(d_eve / base_eve * 100.0, 2),
-            "breach":         (d_eve / base_eve * 100.0) < -5.0,
+            "eve":        round(eve, 0),
+            "delta_eve":  round(d_eve, 0),
+            "pct_change": round(d_eve / base_eve * 100.0, 2) if base_eve else 0.0,
+            "breach":     (d_eve / base_eve * 100.0 if base_eve else 0.0) < eve_limit,
         }
-    return json.dumps({"eve_profile": results, "eve_limit_pct": -5.0}, default=str)
+    return json.dumps({"eve_profile": results, "eve_limit_pct": eve_limit,
+                       "base_eve": round(base_eve)}, default=str)
 
 
 def _handle_get_attribution(inp: dict) -> str:

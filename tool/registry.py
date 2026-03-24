@@ -25,6 +25,7 @@ from tool import (
     portfolio_tool,
     scenario_tool,
     db_tool,
+    dashboard_tool,
 )
 
 # ── Aggregate all schemas ──────────────────────────────────────────────────────
@@ -43,6 +44,9 @@ OPENAI_TOOLS: list[dict] = (
     + portfolio_tool.TOOL_SCHEMAS       # get_portfolio_summary, get_portfolio_positions,
                                         # compute_eve_profile, get_attribution
     + scenario_tool.TOOL_SCHEMAS        # run_scenario_analysis, run_what_if
+    + dashboard_tool.TOOL_SCHEMAS       # get_nav_projection, get_top_performers,
+                                        # get_sector_allocation, get_portfolio_health,
+                                        # get_watchlist, get_planning_session
 )
 
 # Backwards-compatible alias (used in agent/tools.py and tests)
@@ -59,6 +63,7 @@ _HANDLERS: dict[str, Any] = {
     **analytics_tool.HANDLERS,
     **portfolio_tool.HANDLERS,
     **scenario_tool.HANDLERS,
+    **dashboard_tool.HANDLERS,
 }
 
 

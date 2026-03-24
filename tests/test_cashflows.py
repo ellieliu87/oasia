@@ -339,8 +339,9 @@ class TestCashFlowProperties:
         """Cash flows should scale linearly with face amount."""
         cpr = project_prepay_speeds(pool_30yr, rate_paths, model=prepay_model)
 
-        cf_1m = get_cash_flows("TEST-POOL-30YR", cpr, date(2025, 1, 1), 1_000_000, mock_client)
-        cf_5m = get_cash_flows("TEST-POOL-30YR", cpr, date(2025, 1, 1), 5_000_000, mock_client)
+        # Use a unique pool_id to guarantee no stale cache entries affect this test.
+        cf_1m = get_cash_flows("SCALE-TEST-30YR", cpr, date(2025, 1, 1), 1_000_000, mock_client)
+        cf_5m = get_cash_flows("SCALE-TEST-30YR", cpr, date(2025, 1, 1), 5_000_000, mock_client)
 
         # Total principal for 5M should be ~5x that of 1M
         total_1m = np.mean(np.sum(cf_1m.total_principal, axis=1))
@@ -357,7 +358,10 @@ class TestCashFlowProperties:
         cf = get_cash_flows("TEST-POOL-30YR", cpr, date(2025, 1, 1), 1_000_000, mock_client)
 
         # Check first period (cleaner calculation)
-        expected_monthly_rate = pool_30yr.wac / 12.0
+        # MockIntexClient uses spec["wac"]=0.06 for TEST-POOL-30YR,
+        # not pool_30yr.wac (0.065), so compare against the spec rate.
+        mock_spec_wac = 0.06
+        expected_monthly_rate = mock_spec_wac / 12.0
         expected_interest_t0 = cf.balance[:, 0] * expected_monthly_rate
 
         actual_interest_t0 = cf.interest[:, 0]

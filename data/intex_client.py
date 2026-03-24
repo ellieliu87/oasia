@@ -314,7 +314,7 @@ class MockIntexClient(IntexClient):
         face_amount: float = 1_000_000,
     ) -> CashFlows:
         """Generate deterministic synthetic cash flows."""
-        cache_key = f"mock_cf:{pool_id}:{settlement_date}:{_hash_cpr_vectors(cpr_vectors)}"
+        cache_key = f"mock_cf:{pool_id}:{settlement_date}:{face_amount:.2f}:{_hash_cpr_vectors(cpr_vectors)}"
         cached = self._cache_get(cache_key)
         if cached is not None:
             return cached

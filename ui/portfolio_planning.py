@@ -25,21 +25,22 @@ import markdown as _md
 
 logger = logging.getLogger("nexus.portfolio_planning")
 
-# ── Lazy agent cache ──────────────────────────────────────────────────────────
-_AGENTS: dict = {}
-
-
 def _ensure_agents() -> dict:
-    if not _AGENTS:
-        from workflow.agents.allocation_agent import build_allocation_agent
-        from workflow.agents.mbs_decomposition_agent import build_mbs_decomposition_agent
-        from workflow.agents.new_volume_agent import build_new_volume_agent
-        from workflow.agents.risk_agent import build_risk_agent
-        _AGENTS["new_volume"] = build_new_volume_agent()
-        _AGENTS["risk"]       = build_risk_agent()
-        _AGENTS["allocation"] = build_allocation_agent()
-        _AGENTS["mbs_decomp"] = build_mbs_decomposition_agent()
-    return _AGENTS
+    """Build a fresh set of agents for this request.
+
+    Agents are lightweight wrappers around model configuration — instantiating
+    them per-request avoids shared mutable state between concurrent users.
+    """
+    from workflow.agents.allocation_agent import build_allocation_agent
+    from workflow.agents.mbs_decomposition_agent import build_mbs_decomposition_agent
+    from workflow.agents.new_volume_agent import build_new_volume_agent
+    from workflow.agents.risk_agent import build_risk_agent
+    return {
+        "new_volume": build_new_volume_agent(),
+        "risk":       build_risk_agent(),
+        "allocation": build_allocation_agent(),
+        "mbs_decomp": build_mbs_decomposition_agent(),
+    }
 
 
 # ===========================================================================
@@ -713,7 +714,7 @@ def create_portfolio_planning_tab(shared_state: gr.State):
             )
             start_btn = gr.Button("▶  Start New Session", variant="primary")
 
-    with gr.Row():
+    with gr.Row(elem_id="pp-resume-row"):
         resume_session_input = gr.Textbox(
             placeholder="Session ID (or 'latest')",
             label="Resume Session",
@@ -1018,7 +1019,7 @@ def create_portfolio_planning_tab(shared_state: gr.State):
 
     async def _start_workflow(trader_name: str, risk_appetite: str, custom_targets):
         """Initialize state, load data, run Phase 1 agent, show Gate 1."""
-        from agents import Runner
+        from workflow.weave_runner import run_phase
         from workflow.models.workflow_state import RiskAppetite, WorkflowPhase
         from workflow.persistence.state_manager import StateManager
 
@@ -1069,8 +1070,8 @@ def create_portfolio_planning_tab(shared_state: gr.State):
             )
 
             agents = _ensure_agents()
-            result = await Runner.run(
-                agents["new_volume"],
+            result = await run_phase(
+                "new_volume", agents["new_volume"],
                 "Calculate the full new volume schedule and provide a summary.",
                 context=state,
             )
@@ -1131,7 +1132,7 @@ def create_portfolio_planning_tab(shared_state: gr.State):
     # ── Resume session ─────────────────────────────────────────────────────
 
     async def _resume_session(session_id_str: str):
-        from agents import Runner
+        from workflow.weave_runner import run_phase
         from workflow.models.workflow_state import WorkflowPhase
         from workflow.persistence.state_manager import StateManager
 
@@ -1220,7 +1221,7 @@ def create_portfolio_planning_tab(shared_state: gr.State):
 
                 if phase == WorkflowPhase.NEW_VOLUME:
                     p1v = True
-                    result = await Runner.run(agents["new_volume"],
+                    result = await run_phase("new_volume", agents["new_volume"],
                         "Calculate the full new volume schedule and provide a summary.",
                         context=state)
                     await sm.save(state)
@@ -1233,7 +1234,7 @@ def create_portfolio_planning_tab(shared_state: gr.State):
                     p1ag = _agent_card("[Previous phase completed — see session history]")
                     p1co = _render_p1_content(state)
                     p1st = _decision_badge("approved", "resumed")
-                    result = await Runner.run(agents["risk"],
+                    result = await run_phase("risk_assessment", agents["risk"],
                         f"Evaluate portfolio risk for a {state.risk_appetite.value} risk appetite. "
                         f"New 12-month volume is ${state.next_12m_new_volume_mm:,.1f}MM. "
                         "Generate risk constraints and flag any issues.",
@@ -1249,7 +1250,7 @@ def create_portfolio_planning_tab(shared_state: gr.State):
                     p1co = _render_p1_content(state)
                     p2co = _render_p2_content(state)
                     p1st = p2st = _decision_badge("approved", "resumed")
-                    result = await Runner.run(agents["allocation"],
+                    result = await run_phase("allocation", agents["allocation"],
                         f"Generate allocation scenarios for ${state.next_12m_new_volume_mm:,.1f}MM "
                         f"new volume. Risk appetite: {state.risk_appetite.value}. "
                         "Present all three scenarios with trade-off analysis.",
@@ -1269,7 +1270,7 @@ def create_portfolio_planning_tab(shared_state: gr.State):
                     p1st = p2st = p3st = _decision_badge("approved", "resumed")
                     sc = state.selected_scenario
                     if sc:
-                        result = await Runner.run(agents["mbs_decomp"],
+                        result = await run_phase("mbs_decomposition", agents["mbs_decomp"],
                             f"Decompose the MBS allocation of ${sc.mbs_mm:,.1f}MM "
                             f"(from the {sc.label} scenario). "
                             f"Risk appetite: {state.risk_appetite.value}. "
@@ -1360,7 +1361,7 @@ def create_portfolio_planning_tab(shared_state: gr.State):
 
     async def _gate1_proceed(state_json: str, custom_vol, notes: str, action: str):
         """Shared handler for Gate 1 approve/modify, then runs Phase 2 agent."""
-        from agents import Runner
+        from workflow.weave_runner import run_phase
         from workflow.models.workflow_state import ApprovalStatus, GateDecision, WorkflowPhase
         from workflow.persistence.state_manager import StateManager
 
@@ -1407,8 +1408,8 @@ def create_portfolio_planning_tab(shared_state: gr.State):
             await sm.save(state)
 
             # Run Phase 2 agent
-            result = await Runner.run(
-                _ensure_agents()["risk"],
+            result = await run_phase(
+                "risk_assessment", _ensure_agents()["risk"],
                 f"Evaluate portfolio risk for a {state.risk_appetite.value} risk appetite. "
                 f"New 12-month volume is ${state.next_12m_new_volume_mm:,.1f}MM. "
                 "Generate risk constraints and flag any issues.",
@@ -1488,7 +1489,7 @@ def create_portfolio_planning_tab(shared_state: gr.State):
     # ══════════════════════════════════════════════════════════════════════════
 
     async def _gate2_proceed(state_json: str, dur_min, dur_max, appetite_override: str, action: str):
-        from agents import Runner
+        from workflow.weave_runner import run_phase
         from workflow.models.workflow_state import (
             ApprovalStatus, GateDecision, RiskAppetite, WorkflowPhase,
         )
@@ -1537,8 +1538,8 @@ def create_portfolio_planning_tab(shared_state: gr.State):
             state.advance_phase(WorkflowPhase.ALLOCATION)
             await sm.save(state)
 
-            result = await Runner.run(
-                _ensure_agents()["allocation"],
+            result = await run_phase(
+                "allocation", _ensure_agents()["allocation"],
                 f"Generate allocation scenarios for ${state.next_12m_new_volume_mm:,.1f}MM "
                 f"new volume. Risk appetite: {state.risk_appetite.value}. "
                 "Present all three scenarios with trade-off analysis.",
@@ -1618,7 +1619,7 @@ def create_portfolio_planning_tab(shared_state: gr.State):
 
     async def _gate3_proceed(state_json: str, scenario_id: str,
                              custom_mbs=None, custom_cmbs=None, custom_tsy=None):
-        from agents import Runner
+        from workflow.weave_runner import run_phase
         from workflow.models.workflow_state import (
             AllocationScenario, ApprovalStatus, GateDecision, WorkflowPhase,
         )
@@ -1687,8 +1688,8 @@ def create_portfolio_planning_tab(shared_state: gr.State):
             await sm.save(state)
 
             sc = state.selected_scenario
-            result = await Runner.run(
-                _ensure_agents()["mbs_decomp"],
+            result = await run_phase(
+                "mbs_decomposition", _ensure_agents()["mbs_decomp"],
                 f"Decompose the MBS allocation of ${sc.mbs_mm:,.1f}MM "
                 f"(from the {sc.label} scenario). "
                 f"Risk appetite: {state.risk_appetite.value}. "
