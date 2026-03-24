@@ -1,6 +1,6 @@
 """
 auth/login_page.py
-Dark-themed HTML login page for the Oasia platform.
+Dark-themed HTML login page for Oasia.
 """
 from __future__ import annotations
 
@@ -102,7 +102,7 @@ LOGIN_HTML = """<!DOCTYPE html>
 <body>
   <div class="card">
     <div class="brand">Oasia</div>
-    <div class="subtitle">Agency MBS Platform &nbsp;·&nbsp; Sign in with your company account</div>
+    <div class="subtitle">Agency MBS &nbsp;·&nbsp; Sign in with your company account</div>
     {{error_block}}
     <form method="POST" action="/login">
       <div class="field">
@@ -115,7 +115,7 @@ LOGIN_HTML = """<!DOCTYPE html>
       </div>
       <button class="btn" type="submit">Sign In</button>
     </form>
-    <div class="footer">Oasia &nbsp;·&nbsp; Fixed Income Portfolio Platform</div>
+    <div class="footer">Oasia &nbsp;·&nbsp; Fixed Income Portfolio</div>
   </div>
 </body>
 </html>"""

@@ -1,6 +1,6 @@
 # Oasia — Stakeholder Summary
 
-**Oasia** is an AI-powered analytics and decision-support platform for institutional Agency MBS (mortgage-backed securities) portfolio management teams. It replaces spreadsheet-driven workflows with a unified, browser-based workbench that combines quantitative fixed-income analytics, a 7-agent AI assistant, and a structured human-in-the-loop purchase-planning workflow.
+**Oasia** is an AI-powered analytics and decision-support application for institutional Agency MBS (mortgage-backed securities) portfolio management teams. It replaces spreadsheet-driven workflows with a unified, browser-based workbench that combines quantitative fixed-income analytics, a 7-agent AI assistant, and a structured human-in-the-loop purchase-planning workflow.
 
 ---
 

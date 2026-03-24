@@ -57,7 +57,7 @@
 **Deployment:** Browser-based single-page application (SPA); FastAPI + Gradio 6; can run on-premises or in a private cloud
 
 **Purpose:**
-Oasia is an AI-powered analytics workbench and decision-support platform for trading desks managing Agency MBS portfolios. It combines quantitative analytics (OAS, OAD, EVE, prepayment modelling), a 7-agent AI chat assistant, and a 4-phase human-in-the-loop purchase-planning workflow to support the full investment lifecycle: screening → risk assessment → allocation → execution planning.
+Oasia is an AI-powered analytics workbench and decision-support application for trading desks managing Agency MBS portfolios. It combines quantitative analytics (OAS, OAD, EVE, prepayment modelling), a 7-agent AI chat assistant, and a 4-phase human-in-the-loop purchase-planning workflow to support the full investment lifecycle: screening → risk assessment → allocation → execution planning.
 
 **Asset classes supported:**
 
@@ -133,7 +133,7 @@ Two separate agent systems exist in parallel:
 
 | System | Technology | Tracing |
 |--------|-----------|---------|
-| NEXUS Chat Panel (7 agents) | Raw OpenAI client (`openai.OpenAI().chat.completions.create`) + OpenAI Agents SDK `agents.trace()` | W&B Weave (via SDK patch) + OpenAI platform (via `agents.trace`) |
+| Oasia Chat Panel (7 agents) | Raw OpenAI client (`openai.OpenAI().chat.completions.create`) + OpenAI Agents SDK `agents.trace()` | W&B Weave (via SDK patch) + OpenAI platform (via `agents.trace`) |
 | Portfolio Planning Workflow (4 agents) | OpenAI Agents SDK (`Runner.run` via `weave_runner.run_phase`) | W&B Weave (via `@weave.op`) + OpenAI platform (automatic SDK instrumentation) |
 
 ---
@@ -698,7 +698,7 @@ Four LLM-as-judge scorers **must** be applied to every evaluation response:
 - REQ-OBS-001: On application startup, `init_weave()` **must** be called. If `WANDB_API_KEY` is not set, Weave **must** initialise in offline/no-op mode without raising an exception.
 - REQ-OBS-002: After `init_weave()`, the OpenAI Python SDK **must** be automatically patched so all `chat.completions.create()` calls are captured in Weave traces.
 - REQ-OBS-003: The `weave_op()` helper **must** return `weave.op` when Weave is installed and initialised, or a no-op decorator otherwise.
-- REQ-OBS-004: NEXUS orchestrator chat calls **must** be wrapped in `agents.trace("nexus_orchestrator")` to produce a top-level trace visible in the OpenAI platform dashboard.
+- REQ-OBS-004: Oasia orchestrator chat calls **must** be wrapped in `agents.trace("nexus_orchestrator")` to produce a top-level trace visible in the OpenAI platform dashboard.
 - REQ-OBS-005: Each sub-agent delegation **must** be wrapped in `custom_span(f"delegate:<agent_name>")`.
 - REQ-OBS-006: Each tool call within a sub-agent **must** be wrapped in `custom_span(f"tool:<tool_name>")`.
 - REQ-OBS-007: All Portfolio Planning agent calls **must** be wrapped in `run_phase()` decorated with `@_op` (Weave op).
@@ -787,7 +787,7 @@ All configuration **must** be loaded from environment variables (or a `.env` fil
 |---------|----------------|---------|
 | `gradio` | 4.0 | Web UI framework |
 | `openai` | 1.30 | OpenAI Python SDK |
-| `openai-agents` | 0.0.9 | OpenAI Agents SDK (Portfolio Planning, platform tracing) |
+| `openai-agents` | 0.0.9 | OpenAI Agents SDK (Portfolio Planning, agent tracing) |
 | `numpy` | 1.24 | Numerical computing |
 | `scipy` | 1.10 | OAS solver (Brent's method), statistics |
 | `pandas` | 2.0 | Data manipulation |

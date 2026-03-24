@@ -168,11 +168,21 @@ def create_watchlist_tab(shared_state: gr.State, dashboard_html: gr.HTML = None)
         elem_classes=["nexus-tab-hdr"],
     )
 
+    # Bottom-align all rows that contain buttons in this tab
+    gr.HTML("""<style>
+#wl-search-row,
+#wl-selection-row,
+#wl-add-cusip-row,
+#wl-remove-row {
+  align-items: flex-end !important;
+}
+</style>""")
+
     # ── Section 1: Universe Search ────────────────────────────────────────────
     gr.HTML(f'<div style="{_SECTION_LABEL}">Universe Search</div>')
 
     # Row 1: product type + issuer + search button
-    with gr.Row():
+    with gr.Row(elem_id="wl-search-row"):
         wl_filter_product = gr.Dropdown(
             choices=["All", "CC30", "CC15", "GN30", "GN15", "ARM", "TSY", "CMBS", "CMO", "CDBT"],
             value="All", label="Product Type", scale=2,
@@ -201,7 +211,7 @@ def create_watchlist_tab(shared_state: gr.State, dashboard_html: gr.HTML = None)
     )
 
     # Selection bar — revealed when a row is clicked
-    with gr.Row(visible=False) as wl_selection_row:
+    with gr.Row(visible=False, elem_id="wl-selection-row") as wl_selection_row:
         wl_selected_display = gr.Textbox(
             label="Selected CUSIP",
             interactive=False,
@@ -222,7 +232,7 @@ def create_watchlist_tab(shared_state: gr.State, dashboard_html: gr.HTML = None)
     # ── Section 2: Add by CUSIP directly ─────────────────────────────────────
     gr.HTML(f'<div style="{_SECTION_LABEL}">Add by CUSIP</div>')
 
-    with gr.Row():
+    with gr.Row(elem_id="wl-add-cusip-row"):
         wl_cusip_input = gr.Textbox(
             placeholder="e.g. 3140X7GK4", label="CUSIP", scale=2, max_lines=1,
         )
@@ -243,7 +253,7 @@ def create_watchlist_tab(shared_state: gr.State, dashboard_html: gr.HTML = None)
         value=_watchlist_df(), label="", interactive=False, wrap=False,
     )
 
-    with gr.Row():
+    with gr.Row(elem_id="wl-remove-row"):
         wl_remove_dd = gr.Dropdown(
             choices=_watchlist_cusip_choices(), value=None,
             label="Select CUSIP to remove", scale=3,
