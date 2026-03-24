@@ -134,10 +134,18 @@ footer, .gradio-footer { display: none !important; }
   flex-shrink: 0;
 }
 
+/* Allow the dropdown to extend below the topbar — Gradio's .block wrapper
+   defaults to overflow:hidden which clips position:absolute children. */
+.block:has(#nexus-topbar),
+.block:has(#nexus-topbar) > *,
+#nexus-topbar {
+  overflow: visible !important;
+}
+
 .avatar-menu {
   display: none;
   position: absolute;
-  top: calc(100% + 10px);
+  top: 100%;
   right: 0;
   width: 200px;
   background: var(--surface);
@@ -148,6 +156,7 @@ footer, .gradio-footer { display: none !important; }
   overflow: hidden;
 }
 .avatar-menu.open { display: block; }
+.avatar-wrap:hover .avatar-menu { display: block; }
 
 .avatar-menu-header {
   padding: 14px 16px 12px;
@@ -738,7 +747,7 @@ div#nexus-main-tabs > div > [role="tablist"],
   position: fixed;
   bottom: 96px;
   right: 28px;
-  width: 400px;
+  width: 460px;
   height: 580px;
   background: var(--surface);
   border-radius: var(--radius);
@@ -833,7 +842,7 @@ div#nexus-main-tabs > div > [role="tablist"],
   position: fixed !important;
   top: -9999px !important;
   left: -9999px !important;
-  width: 400px !important;
+  width: 460px !important;
   overflow: hidden !important;
 }
 

@@ -1037,7 +1037,7 @@ TOPBAR_HTML = """
               <polyline points="16 17 21 12 16 7"/>
               <line x1="21" y1="12" x2="9" y2="12"/>
             </svg>
-            Sign out
+            Logout
           </button>
         </form>
       </div>
@@ -1079,9 +1079,9 @@ _FAB_AND_POPUP_HTML = """
 <button id="nexus-agent-fab" aria-label="Open Oasia Agent">✦</button>
 
 <div id="nexus-agent-popup" role="dialog" aria-label="Oasia Agent">
-  <div style="background:linear-gradient(135deg,#0F1F3D 0%,#1A3060 100%);padding:16px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0;">
+  <div style="background:linear-gradient(135deg,#0F1F3D 0%,#1A3060 100%);padding:20px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0;">
     <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;color:white;">✦</div>
-    <div style="flex:1;min-width:0;overflow:hidden;">
+    <div style="flex:1;min-width:0;overflow:visible;">
       <div style="font-size:14px;font-weight:700;color:white;font-family:system-ui,sans-serif;line-height:1.2;">Oasia Agent</div>
       <div style="font-size:11px;color:rgba(255,255,255,0.65);display:flex;align-items:center;gap:5px;font-family:system-ui,sans-serif;margin-top:3px;"><span class="live-dot"></span>7 agents · OpenAI SDK</div>
     </div>
