@@ -7,6 +7,9 @@ Changes from original:
   - chat() is now async
   - api_key param kept for call-site compatibility but is no longer used
   - _execute_tool removed; tool dispatch handled by Runner via FunctionTool
+  - Uses get_async_openai_client() from cof.weave_config to support both
+    direct OpenAI access and W&B Inference (INFERENCE_PROVIDER env var)
+  - Uses tracing_op() from cof.tracing for combined Phoenix + Weave tracing
 """
 from __future__ import annotations
 
@@ -14,9 +17,10 @@ import json
 import traceback
 
 from agent.skill_loader import AgentSkill
-from weave_config import weave_op
+from cof.tracing import tracing_op
+from cof.weave_config import get_async_openai_client
 
-_op = weave_op()
+_op = tracing_op()
 
 
 class BaseAgent:
@@ -30,19 +34,19 @@ class BaseAgent:
         extra_context: str = "",
     ):
         from agents import Agent, FunctionTool, OpenAIChatCompletionsModel, set_tracing_disabled
-        from openai import AsyncOpenAI
 
-        set_tracing_disabled(True)   # use Weave for tracing instead
+        set_tracing_disabled(True)   # use Phoenix + Weave for tracing instead
 
         self.skill = skill
         self.tool_handler = tool_handler
         self.extra_context = extra_context
         self._history: list[dict] = []
 
-        # ── Company model — no API key required ──────────────────────────────
+        # ── Company model — uses get_async_openai_client() so the correct ─────
+        # ── backend is selected via INFERENCE_PROVIDER ("openai" or "wandb") ──
         _model = OpenAIChatCompletionsModel(
             model=skill.model,          # read from skill frontmatter, e.g. "gpt-oss-120b"
-            openai_client=AsyncOpenAI(),
+            openai_client=get_async_openai_client(),
         )
 
         # ── Convert OpenAI tool dicts → FunctionTool objects ─────────────────

@@ -9,6 +9,9 @@ Changes from original:
   - chat() and run_quick_query() are now async
   - _has_api guard and _stub_response removed (no API key required)
   - api_key param kept in __init__ for call-site compatibility
+  - Uses get_async_openai_client() from cof.weave_config to support both
+    direct OpenAI access and W&B Inference (INFERENCE_PROVIDER env var)
+  - Uses tracing_op() from cof.tracing for combined Phoenix + Weave tracing
 """
 from __future__ import annotations
 
@@ -20,9 +23,10 @@ from agent.skill_loader import load_all_skills
 from agent.base_agent import BaseAgent
 from agent.tools import OPENAI_TOOLS, handle_tool_call
 from agent.prompts import QUICK_QUERIES
-from weave_config import weave_op
+from cof.tracing import tracing_op
+from cof.weave_config import get_async_openai_client
 
-_op = weave_op()
+_op = tracing_op()
 
 _SUB_AGENT_SKILLS = [
     "security_selection",
@@ -47,9 +51,8 @@ class AgentOrchestrator:
 
     def __init__(self, api_key: str | None = None):  # api_key kept for compatibility
         from agents import Agent, FunctionTool, OpenAIChatCompletionsModel, set_tracing_disabled
-        from openai import AsyncOpenAI
 
-        set_tracing_disabled(True)   # use Weave for tracing instead
+        set_tracing_disabled(True)   # use Phoenix + Weave for tracing instead
 
         self._skills = load_all_skills()
 
@@ -113,7 +116,7 @@ class AgentOrchestrator:
         # ── Build orchestrator Agent ─────────────────────────────────────────
         _model = OpenAIChatCompletionsModel(
             model=orch_skill.model if orch_skill else "gpt-oss-120b",
-            openai_client=AsyncOpenAI(),
+            openai_client=get_async_openai_client(),
         )
         self._orch_agent = Agent(
             name="orchestrator",

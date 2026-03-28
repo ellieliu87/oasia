@@ -1,0 +1,44 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Arize Phoenix auto-instrumentation configuration
+# Consumed by: auto_instrumentation.initialize("./cof/observability-config.yaml")
+#
+# Environment variable substitution syntax (${VAR:-default}) is supported by
+# the c1-aiml-observability-instrumentation package.
+# ─────────────────────────────────────────────────────────────────────────────
+
+project:
+  name: nexus-mbs
+  description: "Agency MBS Trading Desk Analytics Platform (Oasia)"
+
+service:
+  name: oasia
+  version: "1.0.0"
+  # Override at deploy time with the ENVIRONMENT env var (development / staging / production)
+  environment: ${ENVIRONMENT:-development}
+
+phoenix:
+  # URL of the Phoenix collector / UI.
+  # Local dev:          http://localhost:6006
+  # Company hosted:     set PHOENIX_ENDPOINT env var
+  endpoint: ${PHOENIX_ENDPOINT:-http://localhost:6006}
+
+instrumentation:
+  openai:
+    enabled: true
+    # Set to false in production if prompts/responses contain PII or confidential data
+    capture_message_content: true
+
+  # Add other frameworks below if they are introduced later
+  langchain:
+    enabled: false
+  llama_index:
+    enabled: false
+
+tracing:
+  enabled: true
+  # Fraction of requests to sample: 1.0 = 100%.
+  # Lower this (e.g. 0.1) in high-traffic production to reduce overhead.
+  sample_rate: 1.0
+
+logging:
+  level: INFO
