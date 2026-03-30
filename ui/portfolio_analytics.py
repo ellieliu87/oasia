@@ -129,7 +129,7 @@ def _confirm_html(usage: str, scenarios: list, start_dt, n_pools: int) -> str:
         method = "Deterministic scenario rate paths (per CCAR specification)"
     else:
         scope  = "30-year interest income + OAS / OAD / Convexity"
-        method = "Monte Carlo simulation (64 rate paths)"
+        method = "Monte Carlo simulation (256 rate paths)"
 
     start_str = (
         start_dt.strftime("%Y-%m-%d") if hasattr(start_dt, "strftime")
@@ -261,7 +261,7 @@ def _income_for_pool(pool: dict, shock_bps: int, n_periods: int, as_of: date,
     if shock_bps:
         curve = TermStructure(tenors=curve.tenors, rates=curve.rates + shock_bps / 10_000.0)
 
-    rp    = generate_rate_paths(curve=curve, n_paths=64, n_periods=n_periods, seed=42)
+    rp    = generate_rate_paths(curve=curve, n_paths=256, n_periods=n_periods, seed=42)
     chars = _make_pool_chars(pool)
     cpr   = project_prepay_speeds(pool=chars, rate_paths=rp, model=_get_prepay_model(model_name))
     cfs   = get_cash_flows(
@@ -290,7 +290,7 @@ def _risk_for_pool(pool: dict, shock_bps: int, as_of: date,
     if shock_bps:
         curve = TermStructure(tenors=curve.tenors, rates=curve.rates + shock_bps / 10_000.0)
 
-    rp    = generate_rate_paths(curve=curve, n_paths=64, n_periods=360, seed=42)
+    rp    = generate_rate_paths(curve=curve, n_paths=256, n_periods=360, seed=42)
     chars = _make_pool_chars(pool)
     price = float(pool.get("market_price", 100.0))
     a     = compute_analytics(
@@ -590,7 +590,12 @@ def create_portfolio_analytics_tab(shared_state: gr.State):
 
     # ── Show confirmation card when Run clicked ───────────────────────────────
     def _on_run_click(usage, scenarios, start_dt, prepay_model):
-        n_pools = len(_DEMO_POSITIONS)
+        try:
+            from data.position_data import get_position_data
+            _df = get_position_data(_get_as_of(start_dt))
+            n_pools = len(_df) if not _df.empty else len(_DEMO_POSITIONS)
+        except Exception:
+            n_pools = len(_DEMO_POSITIONS)
         html    = _confirm_html(usage, scenarios, start_dt, n_pools)
         config  = {"usage": usage, "scenarios": scenarios, "start_dt": start_dt,
                    "prepay_model": prepay_model or "Model PI V2"}
@@ -631,7 +636,33 @@ def create_portfolio_analytics_tab(shared_state: gr.State):
         start_dt     = config.get("start_dt")
         prepay_model = config.get("prepay_model", "Model PI V2")
         as_of        = _get_as_of(start_dt)
-        positions    = _DEMO_POSITIONS
+        try:
+            from data.position_data import get_position_data
+            _pos_df = get_position_data(as_of)
+            if not _pos_df.empty:
+                positions = [
+                    {
+                        "pool_id":      row["pool_id"],
+                        "product_type": row["product_type"],
+                        "face_amount":  float(row["current_balance"]),
+                        "book_price":   float(row["book_price"]),
+                        "market_price": float(row["market_price"]),
+                        "coupon":       float(row["coupon"]),
+                        "wac":          float(row["coupon"]) + 0.5,
+                        "wala":         int(row["wala"]),
+                        "wam":          int(row["wam"]),
+                        "oas_bps":      float(row["oas_bps"]),
+                        "oad_years":    float(row["oad_years"]),
+                        "convexity":    float(row["convexity"]),
+                        "book_yield":   float(row["book_yield"]),
+                        "purchase_date": str(row["snapshot_date"]),
+                    }
+                    for _, row in _pos_df.iterrows()
+                ]
+            else:
+                positions = _DEMO_POSITIONS
+        except Exception:
+            positions = _DEMO_POSITIONS
 
         # Build task list
         tasks: list[tuple] = []
