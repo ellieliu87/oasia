@@ -76,6 +76,10 @@ def init_phoenix(config_path: str | Path | None = None) -> None:
     resolved = str(Path(config_path) if config_path else _DEFAULT_CONFIG)
 
     # Step 1 — start the Phoenix collector / web UI
+    # Force IPv4 before starting. Phoenix defaults to [::] (IPv6 wildcard) which
+    # fails on hosts where IPv6 is unavailable or blocked on port 4371.
+    # PHOENIX_HOST=localhost resolves to 127.0.0.1 (IPv4) and avoids that error.
+    os.environ.setdefault("PHOENIX_HOST", "localhost")
     try:
         from c1.genai.telemetry import web_server  # noqa: PLC0415
         web_server.start()

@@ -28,12 +28,17 @@ in a single call and provides a combined tracing_op() decorator.
 Environment variables
 ---------------------
     WANDB_API_KEY          — required
-    WANDB_ENTITY_PROJECT   — required  (format: "entity/project",
-                                        e.g. "acme-corp/nexus-mbs")
-    INFERENCE_PROVIDER     — optional  ("openai" | "wandb"; default: "openai")
-                                        "wandb"  → routes calls through the W&B
-                                                   inference endpoint
-                                        "openai" → calls OpenAI directly
+    WANDB_ENTITY_PROJECT   — preferred  (format: "entity/project",
+                                         e.g. "acme-corp/nexus-mbs")
+                             Falls back to combining WANDB_ENTITY + WANDB_PROJECT
+                             if WANDB_ENTITY_PROJECT is not set, so existing .env
+                             files that use the old pattern still work.
+    WANDB_ENTITY           — fallback   (your W&B username or team name)
+    WANDB_PROJECT          — fallback   (project name; default: "nexus-mbs")
+    INFERENCE_PROVIDER     — optional   ("openai" | "wandb"; default: "openai")
+                                         "wandb"  → routes calls through the W&B
+                                                    inference endpoint
+                                         "openai" → calls OpenAI directly
 """
 from __future__ import annotations
 
@@ -46,6 +51,35 @@ _INITIALIZED: bool = False
 
 # W&B Inference base URL (used when INFERENCE_PROVIDER=wandb)
 _WANDB_INFERENCE_BASE_URL = "https://api.inference.wandb.ai/v1"
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _resolve_entity_project() -> str:
+    """
+    Return the "entity/project" string for weave.init(), trying two env-var
+    patterns so that both old and new .env files work:
+
+      1. WANDB_ENTITY_PROJECT=acme-corp/nexus-mbs   (preferred, company pattern)
+      2. WANDB_ENTITY=acme-corp + WANDB_PROJECT=nexus-mbs  (legacy pattern)
+
+    Returns "" if neither is configured.
+    """
+    # Pattern 1 — preferred
+    combined = os.getenv("WANDB_ENTITY_PROJECT", "").strip()
+    if combined:
+        return combined
+
+    # Pattern 2 — legacy fallback
+    entity  = os.getenv("WANDB_ENTITY", "").strip()
+    project = os.getenv("WANDB_PROJECT", "").strip()
+    if entity and project:
+        return f"{entity}/{project}"
+    if project:
+        # No entity set — weave.init accepts a bare project name too
+        return project
+
+    return ""
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -78,12 +112,13 @@ def init_weave() -> str:
         )
         return ""
 
-    entity_project = os.getenv("WANDB_ENTITY_PROJECT", "")
+    entity_project = _resolve_entity_project()
     if not entity_project:
         logger.warning(
-            "WANDB_ENTITY_PROJECT is not set — Weave tracing will be inactive.\n"
-            "  Add to .env:  WANDB_ENTITY_PROJECT=your-entity/your-project\n"
-            "  Example:      WANDB_ENTITY_PROJECT=acme-corp/nexus-mbs"
+            "Weave entity/project could not be determined — Weave tracing will be inactive.\n"
+            "  Option A (preferred): WANDB_ENTITY_PROJECT=your-entity/your-project\n"
+            "  Option B (fallback):  WANDB_ENTITY=your-entity  +  WANDB_PROJECT=your-project\n"
+            "  Example:              WANDB_ENTITY_PROJECT=acme-corp/nexus-mbs"
         )
         return ""
 
@@ -110,16 +145,20 @@ def init_weave() -> str:
 
 def get_dashboard_url() -> str:
     """Return the Weave dashboard URL for the current project."""
-    entity_project = os.getenv("WANDB_ENTITY_PROJECT", "<your-entity>/<your-project>")
+    entity_project = _resolve_entity_project() or "<your-entity>/<your-project>"
     return f"https://wandb.ai/{entity_project}/weave"
 
 
 def weave_op():
     """
-    Return the weave.op decorator if Weave is installed, otherwise a no-op.
+    Return the weave.op decorator only if Weave is installed AND successfully
+    initialised. Otherwise returns a no-op decorator.
 
-    Instruments a function so that its inputs, outputs, and token costs are
-    captured in Weave without hard-depending on the package being installed.
+    Checking _INITIALIZED prevents weave.op from being applied when:
+      - The 'weave' package is not installed on the server.
+      - weave.init() failed (e.g. WANDB_API_KEY not set, no network access).
+    In those cases weave.op would raise at call time, not at decoration time,
+    making the error hard to diagnose. The no-op avoids that entirely.
 
     Usage
     -----
@@ -129,6 +168,12 @@ def weave_op():
         async def chat(self, message: str) -> str:
             ...
     """
+    if not _INITIALIZED:
+        # Weave not initialised — return no-op so decorated functions run normally
+        def _noop(fn=None, **_kwargs):
+            return (lambda f: f) if fn is None else fn
+        return _noop
+
     try:
         import weave  # noqa: PLC0415
         return weave.op

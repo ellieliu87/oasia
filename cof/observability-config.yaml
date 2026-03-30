@@ -21,6 +21,10 @@ phoenix:
   # Local dev:          http://localhost:6006
   # Company hosted:     set PHOENIX_ENDPOINT env var
   endpoint: ${PHOENIX_ENDPOINT:-http://localhost:6006}
+  # Force IPv4 binding. Phoenix defaults to [::] (IPv6) which fails on hosts
+  # where IPv6 is unavailable, causing: "failed to add port to server: no
+  # address added out of total 1 resolved for '[::]:4371'"
+  host: ${PHOENIX_HOST:-localhost}
 
 instrumentation:
   openai:
