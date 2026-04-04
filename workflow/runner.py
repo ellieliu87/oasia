@@ -73,8 +73,10 @@ class WorkflowRunner:
             path_cache = self._build_path_cache(md, as_of)
 
             # ── Step 3: per-pool analytics ───────────────────────────────────
-            from data.pool_universe import get_pool_universe
-            df = get_pool_universe()
+            from data.universe_1000 import screen_universe
+            df = screen_universe()
+            if "cpr" in df.columns and "market_cpr_1m" not in df.columns:
+                df = df.rename(columns={"cpr": "market_cpr_1m"})
             if self.limit:
                 df = df.head(self.limit)
 
