@@ -71,66 +71,26 @@ def _make_waterfall(title: str, drivers: dict, color_theme: str = "cyan") -> go.
 
 def _run_attribution(start_date: date, end_date: date) -> tuple:
     """
-    Run attribution analysis between two dates.
+    Run attribution analysis between two dates via the shared tool layer.
+
+    Delegates to get_attribution() so the tab and the attribution agent
+    always show identical numbers for the same date range.
 
     Returns (oas_attr, oad_attr, yield_attr, eve_attr) dicts.
     """
-    # In production, load snapshots from SnapshotStore
-    # For demo, use synthetic attribution data scaled by time period
-    n_months = max(1, (end_date - start_date).days // 30)
+    import json
+    from tool.registry import handle_tool_call
 
-    oas_attr = {
-        "sector_spread_change": round(2.5 * n_months / 3, 2),
-        "spread_carry": round(0.3 * n_months, 2),
-        "mix_new_purchases": round(1.8 * n_months / 3, 2),
-        "mix_paydowns": round(-0.4 * n_months / 3, 2),
-        "prepay_model_effect": 0.0,  # will be residual
-        "total": 0.0,
-    }
-    subtotal = sum(v for k, v in oas_attr.items() if k not in ("prepay_model_effect", "total"))
-    total_oas = round(4.0 * n_months / 3, 2)
-    oas_attr["prepay_model_effect"] = round(total_oas - subtotal, 4)
-    oas_attr["total"] = total_oas
+    def _fetch(metric: str) -> dict:
+        raw = handle_tool_call("get_attribution", {
+            "metric":     metric,
+            "start_date": start_date.isoformat(),
+            "end_date":   end_date.isoformat(),
+        })
+        result = json.loads(raw) if isinstance(raw, str) else raw
+        return result.get("attribution", {})
 
-    oad_attr = {
-        "seasoning_effect": round(-0.02 * n_months, 4),
-        "rate_level_effect": round(0.15 * n_months / 3, 4),
-        "mix_new_purchases": round(0.08 * n_months / 3, 4),
-        "mix_paydowns": round(-0.01 * n_months / 3, 4),
-        "sales_disposals": 0.0,
-        "total": 0.0,
-    }
-    subtotal_oad = sum(v for k, v in oad_attr.items() if k not in ("sales_disposals", "total"))
-    total_oad = round(0.20 * n_months / 3, 4)
-    oad_attr["sales_disposals"] = round(total_oad - subtotal_oad, 6)
-    oad_attr["total"] = total_oad
-
-    yield_attr = {
-        "prepay_burndown": round(-0.003 * n_months / 3, 4),
-        "new_purchases": round(0.015 * n_months / 3, 4),
-        "paydown_effect": round(0.002 * n_months / 3, 4),
-        "coupon_reinvested": round(0.001 * n_months / 3, 4),
-        "amortization_scheduled": 0.0,
-        "total": 0.0,
-    }
-    subtotal_yield = sum(v for k, v in yield_attr.items() if k not in ("amortization_scheduled", "total"))
-    total_yield = round(0.010 * n_months / 3, 4)
-    yield_attr["amortization_scheduled"] = round(total_yield - subtotal_yield, 6)
-    yield_attr["total"] = total_yield
-
-    eve_attr = {
-        "rate_curve_change": round(-450_000 * n_months / 3, 0),
-        "portfolio_mix_change": round(120_000 * n_months / 3, 0),
-        "prepay_model_effect": round(30_000 * n_months / 3, 0),
-        "new_purchases_added": 0.0,
-        "total": 0.0,
-    }
-    subtotal_eve = sum(v for k, v in eve_attr.items() if k not in ("new_purchases_added", "total"))
-    total_eve = round(-350_000 * n_months / 3, 0)
-    eve_attr["new_purchases_added"] = round(total_eve - subtotal_eve, 0)
-    eve_attr["total"] = total_eve
-
-    return oas_attr, oad_attr, yield_attr, eve_attr
+    return _fetch("oas"), _fetch("oad"), _fetch("yield"), _fetch("eve")
 
 
 def create_attribution_tab(shared_state: gr.State):

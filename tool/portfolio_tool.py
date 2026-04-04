@@ -202,46 +202,73 @@ def _handle_compute_eve_profile(inp: dict) -> str:
 
 
 def _handle_get_attribution(inp: dict) -> str:
+    from datetime import datetime, date as date_type
     metric = inp.get("metric", "oas").lower()
+
+    # Derive number of months from the requested date range so values scale
+    # correctly regardless of whether the caller is the UI tab or the agent.
+    start_str = inp.get("start_date", "")
+    end_str   = inp.get("end_date",   "")
+    try:
+        start_dt = datetime.strptime(start_str, "%Y-%m-%d").date() if start_str else None
+        end_dt   = datetime.strptime(end_str,   "%Y-%m-%d").date() if end_str   else None
+        n_months = max(1, (end_dt - start_dt).days // 30) if (start_dt and end_dt) else 3
+    except (ValueError, TypeError):
+        n_months = 3  # default to 3-month window
+
     if metric == "oas":
+        total = round(4.0 * n_months / 3, 2)
         result = {
-            "sector_spread_change":       2.5,
-            "spread_carry":               0.3,
-            "mix_new_purchases":          1.8,
-            "mix_paydowns":              -0.4,
-            "prepay_model_effect":       -0.2,
-            "total":                      4.0,
+            "sector_spread_change": round(2.5  * n_months / 3, 2),
+            "spread_carry":         round(0.3  * n_months,     2),
+            "mix_new_purchases":    round(1.8  * n_months / 3, 2),
+            "mix_paydowns":         round(-0.4 * n_months / 3, 2),
+            "prepay_model_effect":  0.0,
+            "total":                total,
         }
+        subtotal = sum(v for k, v in result.items() if k not in ("prepay_model_effect", "total"))
+        result["prepay_model_effect"] = round(total - subtotal, 4)
     elif metric == "oad":
+        total = round(0.20 * n_months / 3, 4)
         result = {
-            "seasoning_effect":          -0.02,
-            "rate_level_effect":          0.15,
-            "mix_new_purchases":          0.08,
-            "mix_paydowns":              -0.01,
-            "sales_disposals":            0.00,
-            "total":                      0.20,
+            "seasoning_effect":  round(-0.02 * n_months,     4),
+            "rate_level_effect": round( 0.15 * n_months / 3, 4),
+            "mix_new_purchases": round( 0.08 * n_months / 3, 4),
+            "mix_paydowns":      round(-0.01 * n_months / 3, 4),
+            "sales_disposals":   0.0,
+            "total":             total,
         }
+        subtotal = sum(v for k, v in result.items() if k not in ("sales_disposals", "total"))
+        result["sales_disposals"] = round(total - subtotal, 6)
     elif metric == "yield":
+        total = round(0.010 * n_months / 3, 4)
         result = {
-            "prepay_burndown":           -0.003,
-            "new_purchases":              0.015,
-            "paydown_effect":             0.002,
-            "coupon_reinvested":          0.001,
-            "amortization_scheduled":    -0.005,
-            "total":                      0.010,
+            "prepay_burndown":        round(-0.003 * n_months / 3, 4),
+            "new_purchases":          round( 0.015 * n_months / 3, 4),
+            "paydown_effect":         round( 0.002 * n_months / 3, 4),
+            "coupon_reinvested":      round( 0.001 * n_months / 3, 4),
+            "amortization_scheduled": 0.0,
+            "total":                  total,
         }
+        subtotal = sum(v for k, v in result.items() if k not in ("amortization_scheduled", "total"))
+        result["amortization_scheduled"] = round(total - subtotal, 6)
     else:  # eve
+        total = round(-350_000 * n_months / 3, 0)
         result = {
-            "rate_curve_change":        -450_000,
-            "portfolio_mix_change":      120_000,
-            "prepay_model_effect":        30_000,
-            "new_purchases_added":       -50_000,
-            "total":                    -350_000,
+            "rate_curve_change":     round(-450_000 * n_months / 3, 0),
+            "portfolio_mix_change":  round( 120_000 * n_months / 3, 0),
+            "prepay_model_effect":   round(  30_000 * n_months / 3, 0),
+            "new_purchases_added":   0.0,
+            "total":                 total,
         }
+        subtotal = sum(v for k, v in result.items() if k not in ("new_purchases_added", "total"))
+        result["new_purchases_added"] = round(total - subtotal, 0)
+
     return json.dumps({
-        "metric":     metric,
-        "start_date": inp.get("start_date"),
-        "end_date":   inp.get("end_date"),
+        "metric":      metric,
+        "start_date":  start_str,
+        "end_date":    end_str,
+        "n_months":    n_months,
         "attribution": result,
     }, default=str)
 
